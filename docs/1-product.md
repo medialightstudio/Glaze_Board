@@ -151,6 +151,8 @@ Benchmark: a paper notebook, not enterprise software. Calm, dense-but-clean, rea
 
 **Project screen — one project, one screen, no tabs-within-tabs:** header (title, status pill, site address with map link) · contacts block (role chips, tap-to-call/text, add-person with role picker) · access row (lockbox code + notes) · glass and hardware track chips (tap = the only advance menu) · **exactly one next-action button**, computed from status · activity feed newest-first with documents inline and AI entries marked with evidence links · details drawer (quote, approvals, deposits, invoices, margin = price − glass − hardware).
 
+**Next-action rule:** when the label names a tool (Book measure / Book install / Create quote / Invoice), the button **opens that tool** (visit sheet, quote builder, invoice actions). It must never silently flip status and pretend the booking or document happened.
+
 **Quick-create (sacred):** customer picker with instant "add new" from typed text · site address · optional note. **≤30 seconds, three inputs, one-handed.** Nothing else will ever live on this sheet.
 
 **Quote Builder:** our company block (branding) + customer + homeowner · lines auto-filled from a dropped CRL quote PDF or entered by hand · terms · total · generate PDF · copy **share link** (read-only, view-tracked) · send. The contractor-side quote link is a visible **disabled placeholder** — awaiting definition (open item D5).

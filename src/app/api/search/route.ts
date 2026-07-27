@@ -16,6 +16,8 @@ export async function GET(req: Request) {
       accounts: [],
       glass: [],
       hardware: [],
+      tickets: [],
+      visits: [],
     });
   }
   const results = await withUser(session, (c) => searchAll(c, q));

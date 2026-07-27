@@ -142,11 +142,33 @@ export async function searchAll(client: PoolClient, q: string) {
     `SELECT id, order_number, project_id FROM hardware_orders WHERE order_number ILIKE $1 LIMIT 8`,
     [like],
   );
+  const tickets = await client.query(
+    `SELECT id, issue, address, urgency FROM tickets
+     WHERE issue ILIKE $1 OR address ILIKE $1 OR contact_name ILIKE $1 OR contact_phone ILIKE $1
+     ORDER BY created_at DESC LIMIT 8`,
+    [like],
+  );
+  const visits = await client.query(
+    `SELECT v.id, v.type, v.starts_at::text, v.project_id, v.ticket_id,
+            coalesce(p.title, t.issue, 'Visit') AS title,
+            coalesce(p.site_address, t.address) AS address
+     FROM visits v
+     LEFT JOIN projects p ON p.id = v.project_id
+     LEFT JOIN tickets t ON t.id = v.ticket_id
+     WHERE coalesce(p.title, '') ILIKE $1
+        OR coalesce(p.site_address, '') ILIKE $1
+        OR coalesce(t.issue, '') ILIKE $1
+        OR coalesce(t.address, '') ILIKE $1
+     ORDER BY v.starts_at DESC LIMIT 8`,
+    [like],
+  );
   return {
     projects: projects.rows,
     contacts: contacts.rows,
     accounts: accounts.rows,
     glass: glass.rows,
     hardware: hardware.rows,
+    tickets: tickets.rows,
+    visits: visits.rows,
   };
 }

@@ -280,16 +280,27 @@ export async function maybeFireGate(
   return { fired: true as const };
 }
 
-export function nextActionFor(status: Status): { label: string; to: Status } | null {
-  const map: Partial<Record<Status, { label: string; to: Status }>> = {
-    lead: { label: "Book measure", to: "measure_scheduled" },
+/** Next-action for Project UI. `tool` opens a real sheet/route; never fake booking. */
+export type NextAction = {
+  label: string;
+  to?: Status;
+  tool?: "book_measure" | "book_install" | "create_quote" | "invoice";
+};
+
+export function nextActionFor(status: Status): NextAction | null {
+  const map: Partial<Record<Status, NextAction>> = {
+    lead: { label: "Book measure", to: "measure_scheduled", tool: "book_measure" },
     measure_scheduled: { label: "Mark measured", to: "measured" },
-    measured: { label: "Mark quote sent", to: "quote_sent" },
+    measured: { label: "Create quote", to: "quote_sent", tool: "create_quote" },
     quote_sent: { label: "Mark approved", to: "approved" },
     approved: { label: "Start ordering", to: "ordering" },
-    ready_to_schedule: { label: "Book install", to: "install_scheduled" },
+    ready_to_schedule: {
+      label: "Book install",
+      to: "install_scheduled",
+      tool: "book_install",
+    },
     install_scheduled: { label: "Mark installed", to: "installed" },
-    installed: { label: "Mark invoiced", to: "invoiced" },
+    installed: { label: "Invoice this job", to: "invoiced", tool: "invoice" },
     invoiced: { label: "Mark paid", to: "paid" },
   };
   return map[status] || null;

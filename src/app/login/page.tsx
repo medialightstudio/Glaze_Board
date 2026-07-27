@@ -1,4 +1,4 @@
-// Sign-in page — email + password.
+// Sign-in page — email + password; office → /m, field → /f.
 
 "use client";
 
@@ -21,12 +21,17 @@ export default function LoginPage() {
     setBusy(true);
     setError("");
     const { error: err } = await authClient.signIn.email({ email, password });
-    setBusy(false);
     if (err) {
+      setBusy(false);
       setError("Wrong email or password.");
       return;
     }
-    router.replace("/m");
+    const { data } = await authClient.getSession();
+    const role = (data?.user as { role?: string } | undefined)?.role;
+    const dest =
+      role === "admin" || role === "manager" ? "/m" : "/f";
+    setBusy(false);
+    router.replace(dest);
     router.refresh();
   }
 

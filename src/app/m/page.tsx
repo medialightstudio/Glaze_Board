@@ -1,28 +1,51 @@
-// Today view — urgent → visits → Ready → will-call → exceptions.
+// Today — urgent → visits → Ready → will-call → Review → exceptions.
 
-import Link from "next/link";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { redirect } from "next/navigation";
 import { DraftList } from "@/components/draft-list";
+import { OpsPage, OpsSection, OpsEmpty } from "@/components/ops/ops-page";
+import { ActionCard } from "@/components/ops/action-card";
+import { taskColors } from "@/lib/colors";
 
 export default async function TodayPage() {
   const session = await getAppSession();
   if (!session) redirect("/login");
 
-  let ready: { id: string; title: string }[] = [];
-  let willCall: { id: string; title: string; order_number: string }[] = [];
-  let visits: { id: string; type: string; starts_at: string; title: string }[] = [];
-  let urgent: { id: string; issue: string }[] = [];
-  let exceptions: { id: string; summary: string; project_id: string | null }[] = [];
+  let ready: { id: string; title: string; site_address?: string }[] = [];
+  let willCall: {
+    id: string;
+    project_id: string;
+    title: string;
+    order_number: string;
+    site_address?: string;
+  }[] = [];
+  let visits: {
+    id: string;
+    type: string;
+    starts_at: string;
+    title: string;
+    address?: string;
+    project_id?: string;
+    ticket_id?: string;
+  }[] = [];
+  let urgent: { id: string; issue: string; address?: string }[] = [];
+  let exceptions: { id: string; summary: string; project_id: string | null }[] =
+    [];
   let reviewCount = 0;
-  let drafts: { id: string; kind: string; body: string; project_id: string | null }[] = [];
+  let drafts: {
+    id: string;
+    kind: string;
+    body: string;
+    project_id: string | null;
+  }[] = [];
 
   try {
     await withUser(session, async (client) => {
       try {
         const r = await client.query(
-          `SELECT id, title FROM projects WHERE status = 'ready_to_schedule' ORDER BY updated_at DESC LIMIT 20`,
+          `SELECT id, title, site_address FROM projects
+           WHERE status = 'ready_to_schedule' ORDER BY updated_at DESC LIMIT 20`,
         );
         ready = r.rows;
       } catch {
@@ -30,7 +53,7 @@ export default async function TodayPage() {
       }
       try {
         const w = await client.query(
-          `SELECT h.id, h.order_number, p.title
+          `SELECT h.id, h.project_id, h.order_number, p.title, p.site_address
            FROM hardware_orders h
            JOIN projects p ON p.id = h.project_id
            WHERE h.fulfillment = 'will_call' AND h.status = 'ordered'
@@ -42,7 +65,9 @@ export default async function TodayPage() {
       }
       try {
         const v = await client.query(
-          `SELECT v.id, v.type, v.starts_at::text, coalesce(p.title, t.issue, 'Visit') AS title
+          `SELECT v.id, v.type, v.starts_at::text, v.project_id, v.ticket_id,
+                  coalesce(p.title, t.issue, 'Visit') AS title,
+                  coalesce(p.site_address, t.address) AS address
            FROM visits v
            LEFT JOIN projects p ON p.id = v.project_id
            LEFT JOIN tickets t ON t.id = v.ticket_id
@@ -58,7 +83,9 @@ export default async function TodayPage() {
       }
       try {
         const u = await client.query(
-          `SELECT id, issue FROM tickets WHERE urgency = 'urgent' AND status = 'new' ORDER BY created_at DESC LIMIT 20`,
+          `SELECT id, issue, address FROM tickets
+           WHERE urgency = 'urgent' AND status = 'new'
+           ORDER BY created_at DESC LIMIT 20`,
         );
         urgent = u.rows;
       } catch {
@@ -105,78 +132,112 @@ export default async function TodayPage() {
     0;
 
   return (
-    <div className="p-4 space-y-6 max-w-3xl">
-      <h1 className="text-xl font-semibold">Today</h1>
-      {empty ? (
-        <p className="text-stone-600">Nothing needs you. Enjoy it.</p>
-      ) : null}
+    <OpsPage title="Today" purpose="What needs you before anything else.">
+      {empty ? <p className="text-stone-600">Nothing needs you. Enjoy it.</p> : null}
 
-      <DraftList drafts={drafts} />
-
-      <Section title="Urgent tickets">
+      <OpsSection title="Urgent tickets" count={urgent.length || undefined}>
         {urgent.length === 0 ? (
-          <Placeholder note="Arrives with Service (Phase F)" />
+          <OpsEmpty>None</OpsEmpty>
         ) : (
           urgent.map((t) => (
-            <CardLink key={t.id} href={`/m/service/${t.id}`} label={t.issue} action="Open" />
-          ))
-        )}
-      </Section>
-
-      <Section title="Today's visits">
-        {visits.length === 0 ? (
-          <Placeholder note="Arrives with Dispatch (Phase F)" />
-        ) : (
-          visits.map((v) => (
-            <CardLink
-              key={v.id}
-              href="/m/dispatch"
-              label={`${v.type} · ${v.title}`}
+            <ActionCard
+              key={t.id}
+              href={`/m/service/${t.id}`}
+              label={t.issue}
+              meta={t.address || undefined}
               action="Open"
+              stripe="urgent"
+              urgent
             />
           ))
         )}
-      </Section>
+      </OpsSection>
 
-      <Section title="Ready to Schedule">
+      <OpsSection title="Today's visits" count={visits.length || undefined}>
+        {visits.length === 0 ? (
+          <OpsEmpty>None</OpsEmpty>
+        ) : (
+          visits.map((v) => {
+            const href = v.project_id
+              ? `/m/projects/${v.project_id}`
+              : v.ticket_id
+                ? `/m/service/${v.ticket_id}`
+                : `/f/jobs/${v.id}`;
+            const stripe =
+              v.type === "measure"
+                ? taskColors.measure
+                : v.type === "install"
+                  ? taskColors.install
+                  : taskColors.service;
+            const time = new Date(v.starts_at).toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+            });
+            return (
+              <ActionCard
+                key={v.id}
+                href={href}
+                label={`${v.type} · ${v.title}`}
+                meta={[time, v.address].filter(Boolean).join(" · ")}
+                action="Open"
+                stripe={stripe}
+              />
+            );
+          })
+        )}
+      </OpsSection>
+
+      <OpsSection title="Ready to Schedule" count={ready.length || undefined}>
         {ready.length === 0 ? (
-          <Placeholder note="No jobs waiting" />
+          <OpsEmpty>No jobs waiting</OpsEmpty>
         ) : (
           ready.map((p) => (
-            <CardLink key={p.id} href={`/m/projects/${p.id}`} label={p.title} action="Schedule" />
+            <ActionCard
+              key={p.id}
+              href={`/m/projects/${p.id}`}
+              label={p.title}
+              meta={p.site_address}
+              action="Book install"
+              stripe="install"
+            />
           ))
         )}
-      </Section>
+      </OpsSection>
 
-      <Section title="Will-call ready">
+      <OpsSection title="Will-call ready" count={willCall.length || undefined}>
         {willCall.length === 0 ? (
-          <Placeholder note="None" />
+          <OpsEmpty>None</OpsEmpty>
         ) : (
           willCall.map((w) => (
-            <CardLink
+            <ActionCard
               key={w.id}
-              href={`/m/projects/${w.id}`}
-              label={`${w.title} · ${w.order_number}`}
+              href={`/m/projects/${w.project_id}`}
+              label={`${w.title} · ${w.order_number || "CRL"}`}
+              meta={w.site_address}
               action="Pickup"
             />
           ))
         )}
-      </Section>
+      </OpsSection>
 
-      <Section title="Review Queue">
+      <OpsSection title="Review Queue">
         {reviewCount === 0 ? (
-          <Placeholder note="Clear" />
+          <OpsEmpty>Clear</OpsEmpty>
         ) : (
-          <CardLink href="/m/review" label={`${reviewCount} items need a look`} action="Review" />
+          <ActionCard
+            href="/m/review"
+            label={`${reviewCount} item${reviewCount === 1 ? "" : "s"} need a look`}
+            action="Review"
+          />
         )}
-      </Section>
+      </OpsSection>
 
-      <Section title="Exceptions">
+      <OpsSection title="Exceptions" count={exceptions.length || undefined}>
         {exceptions.length === 0 ? (
-          <Placeholder note="None" />
+          <OpsEmpty>None</OpsEmpty>
         ) : (
           exceptions.map((e) => (
-            <CardLink
+            <ActionCard
               key={e.id}
               href={e.project_id ? `/m/projects/${e.project_id}` : "/m"}
               label={e.summary}
@@ -184,40 +245,9 @@ export default async function TodayPage() {
             />
           ))
         )}
-      </Section>
-    </div>
-  );
-}
+      </OpsSection>
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="text-sm font-medium uppercase text-stone-500 mb-2">{title}</h2>
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
-
-function Placeholder({ note }: { note: string }) {
-  return <p className="text-sm text-stone-500">{note}</p>;
-}
-
-function CardLink({
-  href,
-  label,
-  action,
-}: {
-  href: string;
-  label: string;
-  action: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center justify-between rounded border px-3 py-2 hover:bg-stone-50"
-    >
-      <span className="text-sm">{label}</span>
-      <span className="text-xs font-medium text-stone-600">{action}</span>
-    </Link>
+      <DraftList drafts={drafts} />
+    </OpsPage>
   );
 }

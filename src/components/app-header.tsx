@@ -16,6 +16,15 @@ type SearchResults = {
   accounts: { id: string; name: string }[];
   glass: { id: string; po_number: string; project_id: string }[];
   hardware: { id: string; order_number?: string; project_id: string }[];
+  tickets: { id: string; issue: string; address?: string; urgency?: string }[];
+  visits: {
+    id: string;
+    type: string;
+    title: string;
+    address?: string;
+    project_id?: string;
+    ticket_id?: string;
+  }[];
 };
 
 const empty: SearchResults = {
@@ -24,14 +33,18 @@ const empty: SearchResults = {
   accounts: [],
   glass: [],
   hardware: [],
+  tickets: [],
+  visits: [],
 };
 
 export function AppHeader({
   companyName,
   userName,
+  unreadCount = 0,
 }: {
   companyName: string;
   userName: string;
+  unreadCount?: number;
 }) {
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -48,7 +61,7 @@ export function AppHeader({
       fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
         .then((r) => r.json() as Promise<SearchResults>)
         .then((data) => {
-          setResults(data);
+          setResults({ ...empty, ...data });
           setOpen(true);
         })
         .catch(() => setResults(empty));
@@ -77,6 +90,26 @@ export function AppHeader({
         key: p.id,
         href: `/m/projects/${p.id}`,
         label: p.title,
+      })),
+    },
+    {
+      title: "Visits",
+      items: (results.visits || []).map((v) => ({
+        key: v.id,
+        href: v.project_id
+          ? `/m/projects/${v.project_id}`
+          : v.ticket_id
+            ? `/m/service/${v.ticket_id}`
+            : `/f/jobs/${v.id}`,
+        label: `${v.type} · ${v.title}`,
+      })),
+    },
+    {
+      title: "Tickets",
+      items: (results.tickets || []).map((t) => ({
+        key: t.id,
+        href: `/m/service/${t.id}`,
+        label: t.urgency === "urgent" ? `⚠ ${t.issue}` : t.issue,
       })),
     },
     {
@@ -119,7 +152,7 @@ export function AppHeader({
       <div className="font-semibold text-sm shrink-0">{companyName}</div>
       <div className="relative flex-1 max-w-md" ref={boxRef}>
         <Input
-          placeholder="Search projects, contacts, POs…"
+          placeholder="Search projects, visits, tickets, POs…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => q.trim().length >= 2 && setOpen(true)}
@@ -153,8 +186,17 @@ export function AppHeader({
         ) : null}
       </div>
       <div className="ml-auto flex items-center gap-2">
-        <Link href="/m/notifications" aria-label="Notifications">
+        <Link
+          href="/m/notifications"
+          aria-label="Notifications"
+          className="relative"
+        >
           <Bell className="h-5 w-5 text-stone-600" />
+          {unreadCount > 0 ? (
+            <span className="absolute -top-1 -right-1 min-w-4 h-4 rounded-full bg-stone-900 text-white text-[9px] leading-4 text-center px-0.5">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          ) : null}
         </Link>
         <span className="text-sm text-stone-600 hidden sm:inline">{userName}</span>
         <Button variant="outline" size="sm" onClick={logout}>

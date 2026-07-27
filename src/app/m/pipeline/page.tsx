@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { Badge } from "@/components/ui/badge";
+import { OpsPage } from "@/components/ops/ops-page";
+import { taskColors } from "@/lib/colors";
 
 const LANES: { title: string; statuses: string[] }[] = [
   {
@@ -24,6 +26,33 @@ function daysInStatus(timestamps: Record<string, string> | null, status: string)
   const at = timestamps?.[status];
   if (!at) return 0;
   return Math.floor((Date.now() - new Date(at).getTime()) / (24 * 60 * 60 * 1000));
+}
+
+function TrackChip({
+  letter,
+  status,
+}: {
+  letter: string;
+  status?: string | null;
+}) {
+  if (!status) return null;
+  const done = status === "received" || status === "not_needed";
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] border"
+      style={{
+        borderColor: done ? taskColors.install : "#d6d3d1",
+        color: done ? taskColors.install : "#57534e",
+      }}
+      title={`${letter}: ${status}`}
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full"
+        style={{ background: done ? taskColors.install : "#a8a29e" }}
+      />
+      {letter}:{status === "not_needed" ? "n/a" : status.replace(/_/g, " ")}
+    </span>
+  );
 }
 
 export default async function PipelinePage() {
@@ -51,8 +80,12 @@ export default async function PipelinePage() {
   });
 
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-xl font-semibold">Pipeline</h1>
+    <OpsPage
+      title="Pipeline"
+      purpose="Jobs by stage — open any card for the full hub."
+      wide
+      className="max-w-none"
+    >
       <div className="flex gap-3 overflow-x-auto pb-2">
         {LANES.map((lane) => {
           const cards = projects.filter((p: { status: string }) =>
@@ -79,25 +112,51 @@ export default async function PipelinePage() {
                     hardware_status?: string;
                   }) => {
                     const days = daysInStatus(p.status_timestamps, p.status);
+                    const stripe =
+                      p.status === "measure_scheduled" || p.status === "measured"
+                        ? taskColors.measure
+                        : p.status === "ready_to_schedule" ||
+                            p.status === "install_scheduled"
+                          ? taskColors.install
+                          : undefined;
                     return (
                       <Link
                         key={p.id}
                         href={`/m/projects/${p.id}`}
-                        className="block rounded border bg-white px-2 py-2 hover:bg-stone-50"
+                        className="flex rounded border bg-white hover:bg-stone-50 overflow-hidden"
                       >
-                        <div className="text-sm font-medium leading-snug">{p.title}</div>
-                        <div className="text-xs text-stone-500">{p.account_name}</div>
-                        <div className="mt-1 flex flex-wrap gap-1 items-center">
-                          <Badge variant="secondary" className="text-[10px]">
-                            {p.status.replace(/_/g, " ")}
-                          </Badge>
-                          <span className={days > 7 ? "text-xs text-amber-600" : "text-xs text-stone-400"}>
-                            {days}d
-                          </span>
-                        </div>
-                        <div className="mt-1 flex gap-1 text-[10px] text-stone-500">
-                          {p.glass_status ? <span>G:{p.glass_status}</span> : null}
-                          {p.hardware_status ? <span>H:{p.hardware_status}</span> : null}
+                        {stripe ? (
+                          <span
+                            className="w-1.5 shrink-0"
+                            style={{ background: stripe }}
+                            aria-hidden
+                          />
+                        ) : null}
+                        <div className="px-2 py-2 min-w-0 flex-1">
+                          <div className="text-sm font-medium leading-snug">
+                            {p.title}
+                          </div>
+                          <div className="text-xs text-stone-500">
+                            {p.account_name}
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1 items-center">
+                            <Badge variant="secondary" className="text-[10px]">
+                              {p.status.replace(/_/g, " ")}
+                            </Badge>
+                            <span
+                              className={
+                                days > 7
+                                  ? "text-xs text-amber-600"
+                                  : "text-xs text-stone-400"
+                              }
+                            >
+                              {days}d
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <TrackChip letter="G" status={p.glass_status} />
+                            <TrackChip letter="H" status={p.hardware_status} />
+                          </div>
                         </div>
                       </Link>
                     );
@@ -128,6 +187,6 @@ export default async function PipelinePage() {
           </ul>
         </details>
       ) : null}
-    </div>
+    </OpsPage>
   );
 }

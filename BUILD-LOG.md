@@ -90,3 +90,7 @@ Decisions: D2/D4/Playwright env still owner gates for live L1/voice number. Mode
 ## Entry 21 — Fix Cloudflare Error 1101 (cross-request Pool I/O)
 Built: per-request Neon Pool in db-core; getAuth()/createAuth() via React cache (no module-scope Pool); wrangler R2+cron omitted until account-ready. Followed: OpenNext troubleshooting; Workers I/O isolation.
 Decisions: deploy hotfix from last good Worker commit for production; enterprise keeps same fix. Model: grok.
+
+## Entry 22 — Connected Ops UX
+Built: shared OpsPage/ActionCard/BookVisitSheet; Project hub (contacts, access, chips+Not Needed, Details, entity links); next-action opens book/quote/invoice tools; Today links+will-call project_id fix+task colors; Pipeline/Dispatch chrome; login role land; search tickets/visits; nav Review badge + notification unread badge. Followed: Connected Ops UX plan; product next-action rule.
+Decisions: none. Model: grok. Checks: tsc ✅.

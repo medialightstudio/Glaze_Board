@@ -1,4 +1,4 @@
-// Dispatch — week visit lanes + map pane (pins by task color, urgent red ring).
+// Dispatch — week visit list + map; rows open the project (or ticket).
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -8,6 +8,7 @@ import { taskColors } from "@/lib/colors";
 import type { MapPin } from "@/lib/maps";
 import { MapView } from "@/components/map-view";
 import { BookVisitForm } from "./book-visit";
+import { OpsPage } from "@/components/ops/ops-page";
 
 export default async function DispatchPage() {
   const session = await getAppSession();
@@ -75,17 +76,17 @@ export default async function DispatchPage() {
           ? `/m/projects/${v.project_id}`
           : v.ticket_id
             ? `/m/service/${v.ticket_id}`
-            : "/m/dispatch",
+            : `/f/jobs/${v.id}`,
       }),
     );
 
   return (
-    <div className="p-4 max-w-5xl space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Dispatch</h1>
-        <BookVisitForm users={users} projects={projects} />
-      </div>
-
+    <OpsPage
+      title="Dispatch"
+      purpose="This week's visits — open a row for the job hub."
+      wide
+      actions={<BookVisitForm users={users} projects={projects} />}
+    >
       <MapView pins={pins} />
 
       {visits.length === 0 ? (
@@ -100,6 +101,7 @@ export default async function DispatchPage() {
               title: string;
               address?: string;
               project_id?: string;
+              ticket_id?: string;
               assignees: string[];
             }) => {
               const color =
@@ -108,9 +110,16 @@ export default async function DispatchPage() {
                   : v.type === "install"
                     ? taskColors.install
                     : taskColors.service;
-              const href = v.project_id ? `/m/projects/${v.project_id}` : "/m/service";
+              const href = v.project_id
+                ? `/m/projects/${v.project_id}`
+                : v.ticket_id
+                  ? `/m/service/${v.ticket_id}`
+                  : `/f/jobs/${v.id}`;
               return (
-                <li key={v.id} className="rounded border px-3 py-2 text-sm flex gap-3">
+                <li
+                  key={v.id}
+                  className="rounded border px-3 py-2 text-sm flex gap-3"
+                >
                   <span
                     className="w-1.5 rounded shrink-0"
                     style={{ background: color }}
@@ -118,7 +127,10 @@ export default async function DispatchPage() {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex justify-between gap-2">
-                      <Link href={href} className="font-medium hover:underline truncate">
+                      <Link
+                        href={href}
+                        className="font-medium hover:underline truncate"
+                      >
                         {v.title}
                       </Link>
                       <span className="text-stone-500 shrink-0">
@@ -131,11 +143,21 @@ export default async function DispatchPage() {
                         })}
                       </span>
                     </div>
-                    <div className="text-stone-600 capitalize">{v.type}</div>
+                    <div className="text-stone-600 capitalize flex gap-2">
+                      <span>{v.type}</span>
+                      {v.project_id ? (
+                        <Link
+                          href={`/f/jobs/${v.id}`}
+                          className="text-xs underline text-stone-500"
+                        >
+                          Field view
+                        </Link>
+                      ) : null}
+                    </div>
                     {v.address ? (
                       <a
                         className="text-xs text-stone-500 underline"
-                        href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(v.address)}`}
+                        href={`https://maps.google.com/?q=${encodeURIComponent(v.address)}`}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -149,6 +171,6 @@ export default async function DispatchPage() {
           )}
         </ul>
       )}
-    </div>
+    </OpsPage>
   );
 }
