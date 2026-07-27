@@ -1,0 +1,17 @@
+# Secrets and private owner notes
+userconfig.md
+.env*
+
+# Dependencies and build output
+node_modules
+.next
+.open-next
+.wrangler
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
