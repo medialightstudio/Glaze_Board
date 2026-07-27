@@ -1,4 +1,4 @@
-// POST multipart upload — documents table first, then R2 bytes; PDF extract when possible.
+// POST multipart upload — R2 + PDF extract + optional auto-advance / CRL fill.
 
 import { NextResponse } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
@@ -6,6 +6,13 @@ import { withUser } from "@/lib/db-core";
 import { getDocsBucket, objectKey } from "@/lib/storage";
 import { extractPdfText } from "@/lib/pdf/extract";
 import { extractDocument } from "@/lib/ai";
+import { isAutonomyOn } from "@/lib/autonomy";
+import {
+  applyProcurementAdvance,
+  matchExtractToOrders,
+} from "@/lib/procure-match";
+import { maybeFireGate } from "@/lib/status-machine";
+import { applyCrlQuoteExtract } from "@/lib/crl-quote-fill";
 
 function typeFromName(name: string) {
   const lower = name.toLowerCase();
@@ -69,12 +76,48 @@ export async function POST(req: Request) {
               projectId,
             ],
           );
-          if ((extracted.confidence || 0) < 0.9) {
+
+          if (
+            extracted.quote_number ||
+            (extracted.hardware_bom && extracted.hardware_bom.length) ||
+            /crl|quote/i.test(fileName)
+          ) {
+            await applyCrlQuoteExtract(c, session.companyId, doc.id, extracted);
+          }
+
+          const { best, alternatives } = await matchExtractToOrders(c, extracted);
+          const matchConf = best?.score || 0;
+          const autoOk =
+            (extracted.confidence || 0) >= 0.9 &&
+            matchConf >= 0.9 &&
+            (await isAutonomyOn(c, session.companyId, "auto_advance_procurement"));
+
+          if (autoOk && best) {
+            const adv = await applyProcurementAdvance(
+              c,
+              session.companyId,
+              extracted,
+              best,
+              doc.id,
+            );
+            if (adv.advanced) await maybeFireGate(c, session, best.project_id);
+          } else if ((extracted.confidence || 0) < 0.9 || !best || matchConf < 0.9) {
             await c.query(
               `INSERT INTO review_queue_items
-                 (company_id, document_id, extract, confidence, status)
-               VALUES ($1, $2, $3::jsonb, $4, 'open')`,
-              [session.companyId, doc.id, JSON.stringify(extracted), extracted.confidence],
+                 (company_id, document_id, guessed_project_id, alternatives, extract, confidence, status)
+               VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, 'open')`,
+              [
+                session.companyId,
+                doc.id,
+                best?.project_id || projectId,
+                JSON.stringify(
+                  alternatives.length
+                    ? alternatives
+                    : [{ project_id: projectId, label: "Upload project", score: 0.5, via: "upload" }],
+                ),
+                JSON.stringify(extracted),
+                extracted.confidence,
+              ],
             );
           }
         });

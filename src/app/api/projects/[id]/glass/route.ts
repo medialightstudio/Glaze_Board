@@ -117,6 +117,12 @@ export async function POST(
          WHERE id = $5 RETURNING *`,
         [to, body.supplier_order_number || null, body.price ?? null, body.promised_date || null, orderId],
       );
+      if (rows[0]?.price != null) {
+        await c.query(
+          `UPDATE projects SET margin_glass_cents = $2, updated_at = now() WHERE id = $1`,
+          [projectId, rows[0].price],
+        );
+      }
       await maybeFireGate(c, session, projectId);
       return { order: rows[0] };
     });

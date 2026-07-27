@@ -99,5 +99,9 @@ Or run migrate once against live with `MIGRATE_DATABASE_URL`, then seed while `B
 Deployed Worker: `glazeboard`  
 URLs: https://glazeboard.com · https://www.glazeboard.com · https://glazeboard.medialightstudia.workers.dev
 
-**R2:** `wrangler.jsonc` includes the `DOCS` → `docs` binding again. Before deploy: Dashboard → R2 → enable → create bucket `docs` (or `npm run cf:r2`). Cron triggers: `*/10` mail poll and `0 14 * * *` digest (wire Worker scheduled handler or hit `/api/cron` with `CRON_SECRET`).
+**R2:** `wrangler.jsonc` includes the `DOCS` → `docs` binding again. Before deploy: Dashboard → R2 → enable → create bucket `docs` (or `npm run cf:r2`).
+
+**Cron:** `wrangler.jsonc` declares `*/10 * * * *` and `0 14 * * *`. OpenNext does not auto-map those to Next routes — wire one of:
+1. Cloudflare Worker scheduled event that `fetch`es `https://glazeboard.com/api/cron` (poll) and `.../api/cron?job=digest` with `Authorization: Bearer $CRON_SECRET`
+2. Or an external cron (same URLs). Also `?job=qb_payments` for QuickBooks balance sync.
 

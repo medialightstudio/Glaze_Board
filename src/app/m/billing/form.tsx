@@ -29,7 +29,7 @@ export function BillingForm({ unbilled }: { unbilled: Job[] }) {
 
   const jobs = unbilled.filter((j) => j.account_id === accountId);
 
-  function create() {
+  function create(kind: "final" | "deposit" = "final") {
     setMsg("");
     const projectIds = jobs.filter((j) => selected[j.id]).map((j) => j.id);
     if (!accountId || projectIds.length === 0) {
@@ -40,14 +40,23 @@ export function BillingForm({ unbilled }: { unbilled: Job[] }) {
       const res = await fetch("/api/billing/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ account_id: accountId, project_ids: projectIds }),
+        body: JSON.stringify({
+          account_id: accountId,
+          project_ids: projectIds,
+          kind,
+          deposit_percent: 50,
+        }),
       });
-      const data = await res.json() as any;
+      const data = (await res.json()) as any;
       if (!res.ok) {
         setMsg(data.error || "Failed.");
         return;
       }
-      setMsg(`Invoice created${data.qb_invoice_id ? ` · QB #${data.qb_invoice_id}` : ""}.`);
+      setMsg(
+        `${kind === "deposit" ? "Deposit" : "Invoice"} created${
+          data.qb_invoice_id ? ` · QB #${data.qb_invoice_id}` : ""
+        }.`,
+      );
       router.refresh();
     });
   }
@@ -86,14 +95,24 @@ export function BillingForm({ unbilled }: { unbilled: Job[] }) {
           </li>
         ))}
       </ul>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={create}
-        className="rounded bg-stone-900 text-white px-4 py-2 text-sm disabled:opacity-50"
-      >
-        {pending ? "Creating…" : "Create & send"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => create("final")}
+          className="rounded bg-stone-900 text-white px-4 py-2 text-sm disabled:opacity-50"
+        >
+          {pending ? "Creating…" : "Create & send"}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => create("deposit")}
+          className="rounded border px-4 py-2 text-sm disabled:opacity-50"
+        >
+          Deposit 50%
+        </button>
+      </div>
       {msg ? <p className="text-sm text-stone-600">{msg}</p> : null}
     </section>
   );

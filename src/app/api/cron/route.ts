@@ -27,6 +27,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, job: "digest" });
   }
 
+  if (job === "qb_payments") {
+    const base = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+    await fetch(`${base}/api/webhooks/qb`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.QB_WEBHOOK_SECRET
+          ? { "x-qb-secret": process.env.QB_WEBHOOK_SECRET }
+          : {}),
+      },
+      body: "{}",
+    });
+    return NextResponse.json({ ok: true, job: "qb_payments" });
+  }
+
+  // Default: mail poll. Cloudflare cron */10 hits this; 0 14 UTC should use ?job=digest
+  // (documented in docs/cloudflare-deploy.md — wire scheduled handler or external cron).
   const result = await pollMailAccounts();
   return NextResponse.json({ ok: true, job: "poll", ...result });
 }

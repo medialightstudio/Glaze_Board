@@ -2,6 +2,7 @@
 
 import type { PoolClient } from "@neondatabase/serverless";
 import type { AppSession } from "@/lib/db-core";
+import { createDraft } from "@/lib/drafts";
 
 export const STATUSES = [
   "lead",
@@ -93,6 +94,16 @@ export async function transition(
 
   if (["ordering", "ready_to_schedule", "approved"].includes(to) || from === "ordering") {
     await maybeFireGate(client, session, projectId);
+  }
+
+  if (to === "installed") {
+    const titleRow = await client.query(`SELECT title FROM projects WHERE id = $1`, [projectId]);
+    await createDraft(client, session.companyId, {
+      projectId,
+      kind: "post_install_care",
+      channel: "email",
+      body: `Thanks for choosing us for ${titleRow.rows[0]?.title || "your install"}. If anything needs a touch-up in the next 48 hours, just reply.`,
+    });
   }
 
   return { ok: true as const, from, to, eventId };
@@ -257,6 +268,14 @@ export async function maybeFireGate(
   } catch {
     // OBSERVED: web-push may fail in Workers — do not block the gate.
   }
+
+  const titleRow = await client.query(`SELECT title FROM projects WHERE id = $1`, [projectId]);
+  await createDraft(client, session.companyId, {
+    projectId,
+    kind: "gate_schedule",
+    channel: "email",
+    body: `Hi — ${titleRow.rows[0]?.title || "your project"} is ready to schedule. What days work this week?`,
+  });
 
   return { fired: true as const };
 }

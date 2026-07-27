@@ -79,6 +79,12 @@ export async function POST(
           orderId,
         ],
       );
+      if (rows[0]?.cost != null) {
+        await c.query(
+          `UPDATE projects SET margin_hardware_cents = $2, updated_at = now() WHERE id = $1`,
+          [projectId, rows[0].cost],
+        );
+      }
       await maybeFireGate(c, session, projectId);
       return { order: rows[0] };
     });

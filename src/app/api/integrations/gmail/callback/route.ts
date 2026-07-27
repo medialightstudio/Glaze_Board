@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { exchangeCode } from "@/lib/gmail";
+import { exchangeCode, getProfileEmail } from "@/lib/gmail";
 import { withOwnerClient } from "@/lib/db-core";
 
 export async function GET(req: Request) {
@@ -16,6 +16,8 @@ export async function GET(req: Request) {
   const redirectUri = `${process.env.BETTER_AUTH_URL}/api/integrations/gmail/callback`;
   const tokens = await exchangeCode(code, redirectUri);
   const expires = new Date(Date.now() + tokens.expires_in * 1000);
+  const email =
+    (await getProfileEmail(tokens.access_token)) || `${state.purpose}@connected`;
 
   await withOwnerClient(async (c) => {
     await c.query("SELECT set_config('app.company_id', $1, true)", [state.companyId]);
@@ -24,6 +26,7 @@ export async function GET(req: Request) {
          (company_id, purpose, email, refresh_token, access_token, token_expires_at, connected_at)
        VALUES ($1, $2, $3, $4, $5, $6, now())
        ON CONFLICT (company_id, purpose) DO UPDATE SET
+         email = EXCLUDED.email,
          refresh_token = COALESCE(EXCLUDED.refresh_token, mail_accounts.refresh_token),
          access_token = EXCLUDED.access_token,
          token_expires_at = EXCLUDED.token_expires_at,
@@ -31,7 +34,7 @@ export async function GET(req: Request) {
       [
         state.companyId,
         state.purpose,
-        `${state.purpose}@connected`,
+        email,
         tokens.refresh_token || null,
         tokens.access_token,
         expires.toISOString(),

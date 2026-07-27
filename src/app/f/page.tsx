@@ -1,10 +1,11 @@
-// Field Today — assignments for the signed-in crew member.
+// Field Today — assignees or team members; company-local day (DEC-29).
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAppSession, isOfficeRole } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { taskColors } from "@/lib/colors";
+import { companyTodayExpr } from "@/lib/field-access";
 
 function colorFor(type: string) {
   if (type === "measure") return taskColors.measure;
@@ -18,18 +19,22 @@ export default async function FieldHome() {
   const office = isOfficeRole(session.role);
 
   const visits = await withUser(session, async (c) => {
+    const tz = await companyTodayExpr(c, session.companyId);
     const { rows } = await c.query(
       `SELECT v.id, v.type, v.starts_at::text, v.completed_at::text,
-              p.title, p.site_address, p.lockbox_code
+              p.title, p.site_address, p.access_lockbox_code
        FROM visits v
        LEFT JOIN projects p ON p.id = v.project_id
-       WHERE v.starts_at::date = CURRENT_DATE
+       LEFT JOIN teams t ON t.id = v.team_id
+       WHERE (v.starts_at AT TIME ZONE $1)::date
+             = (now() AT TIME ZONE $1)::date
          AND (
-           $1::boolean = true
-           OR $2 = ANY (v.assignees)
+           $2::boolean = true
+           OR $3 = ANY (v.assignees)
+           OR (t.id IS NOT NULL AND $3 = ANY (t.member_ids))
          )
        ORDER BY v.starts_at ASC`,
-      [office, session.userId],
+      [tz, office, session.userId],
     );
     return rows as {
       id: string;
@@ -38,7 +43,7 @@ export default async function FieldHome() {
       completed_at: string | null;
       title: string;
       site_address: string;
-      lockbox_code: string | null;
+      access_lockbox_code: string | null;
     }[];
   });
 

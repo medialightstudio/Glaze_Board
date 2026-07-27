@@ -1,9 +1,19 @@
 "use client";
 
-// Complete visit — photos, punch list, signature or skip reason.
+// Complete visit — photos, punch list, ink-checked signature or skip reason.
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+
+function canvasHasInk(canvas: HTMLCanvasElement) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return false;
+  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] > 10) return true;
+  }
+  return false;
+}
 
 export function CompleteVisit({
   visitId,
@@ -21,6 +31,7 @@ export function CompleteVisit({
   const [punch, setPunch] = useState("");
   const [skipReason, setSkipReason] = useState("");
   const [skip, setSkip] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
 
@@ -30,15 +41,15 @@ export function CompleteVisit({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
     if (e.type === "pointerdown") {
       setDrawing(true);
       ctx.beginPath();
       ctx.moveTo(x, y);
       canvas.setPointerCapture(e.pointerId);
     } else if (e.type === "pointermove" && drawing) {
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
       ctx.strokeStyle = "#1c1917";
       ctx.lineTo(x, y);
@@ -51,46 +62,56 @@ export function CompleteVisit({
   function clearSig() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   function submit() {
     setError("");
     start(async () => {
+      if (type === "install" && photos.length === 0 && !skip) {
+        setError("Add at least one photo for an install.");
+        return;
+      }
       let signatureDataUrl: string | null = null;
       if (!skip) {
         if (!name.trim()) {
           setError("Homeowner name is required.");
           return;
         }
-        signatureDataUrl = canvasRef.current?.toDataURL("image/png") || null;
-        if (!signatureDataUrl) {
+        const canvas = canvasRef.current;
+        if (!canvas || !canvasHasInk(canvas)) {
           setError("Signature is required, or skip with a reason.");
           return;
         }
+        signatureDataUrl = canvas.toDataURL("image/png");
       } else if (!skipReason.trim()) {
         setError("A reason is required to skip sign-off.");
         return;
       }
 
-      const res = await fetch(`/api/field/visits/${visitId}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectId,
-          type,
-          homeowner_name: name,
-          punch_list: punch
+      const form = new FormData();
+      form.set("project_id", projectId);
+      form.set("type", type);
+      form.set("homeowner_name", name);
+      form.set("skip", skip ? "1" : "0");
+      form.set("skip_reason", skipReason);
+      form.set(
+        "punch_list",
+        JSON.stringify(
+          punch
             .split("\n")
             .map((s) => s.trim())
             .filter(Boolean),
-          skip,
-          skip_reason: skipReason,
-          signature_data_url: signatureDataUrl,
-        }),
+        ),
+      );
+      if (signatureDataUrl) form.set("signature_data_url", signatureDataUrl);
+      for (const f of photos) form.append("photos", f);
+
+      const res = await fetch(`/api/field/visits/${visitId}/complete`, {
+        method: "POST",
+        body: form,
       });
-      const data = await res.json() as any;
+      const data = (await res.json()) as { error?: string };
       if (!res.ok) {
         setError(data.error || "Could not complete.");
         return;
@@ -103,6 +124,22 @@ export function CompleteVisit({
   return (
     <section className="space-y-3 border-t pt-4">
       <h2 className="text-sm font-medium uppercase text-stone-500">Complete</h2>
+
+      <label className="block text-sm">
+        Photos {type === "install" ? "(required)" : "(optional)"}
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple
+          className="mt-1 block w-full text-sm"
+          onChange={(e) => setPhotos(Array.from(e.target.files || []))}
+        />
+      </label>
+      {photos.length ? (
+        <p className="text-xs text-stone-500">{photos.length} photo(s) selected</p>
+      ) : null}
+
       <label className="block text-sm">
         Punch list (optional, one per line)
         <textarea

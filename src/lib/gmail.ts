@@ -66,6 +66,13 @@ export async function listRecentMessages(accessToken: string, max = 10) {
   return data.messages || [];
 }
 
+export type GmailPart = {
+  filename?: string;
+  mimeType?: string;
+  body?: { attachmentId?: string; data?: string; size?: number };
+  parts?: GmailPart[];
+};
+
 export async function getMessage(accessToken: string, id: string) {
   const res = await fetch(`${GMAIL_API}/users/me/messages/${id}?format=full`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -74,13 +81,95 @@ export async function getMessage(accessToken: string, id: string) {
   return res.json() as Promise<{
     id: string;
     threadId: string;
-    payload?: {
-      headers?: { name: string; value: string }[];
-      parts?: { filename?: string; mimeType?: string; body?: { attachmentId?: string; data?: string } }[];
-      body?: { data?: string };
-    };
+    payload?: GmailPart & { headers?: { name: string; value: string }[] };
     internalDate?: string;
   }>;
+}
+
+export async function getAttachment(
+  accessToken: string,
+  messageId: string,
+  attachmentId: string,
+): Promise<Uint8Array | null> {
+  const res = await fetch(
+    `${GMAIL_API}/users/me/messages/${messageId}/attachments/${attachmentId}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as { data?: string };
+  if (!data.data) return null;
+  const b64 = data.data.replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(Buffer.from(b64, "base64"));
+}
+
+export function collectAttachments(payload?: GmailPart): {
+  filename: string;
+  mimeType: string;
+  attachmentId: string;
+}[] {
+  const out: { filename: string; mimeType: string; attachmentId: string }[] = [];
+  function walk(part?: GmailPart) {
+    if (!part) return;
+    if (part.body?.attachmentId && part.filename) {
+      out.push({
+        filename: part.filename,
+        mimeType: part.mimeType || "application/octet-stream",
+        attachmentId: part.body.attachmentId,
+      });
+    }
+    for (const p of part.parts || []) walk(p);
+  }
+  walk(payload);
+  return out;
+}
+
+export async function getProfileEmail(accessToken: string) {
+  const res = await fetch(`${GMAIL_API}/users/me/profile`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { emailAddress?: string };
+  return data.emailAddress || null;
+}
+
+export async function labelFiled(accessToken: string, messageId: string) {
+  // Ensure label exists then apply
+  let labelId: string | null = null;
+  const list = await fetch(`${GMAIL_API}/users/me/labels`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (list.ok) {
+    const data = (await list.json()) as { labels?: { id: string; name: string }[] };
+    labelId = data.labels?.find((l) => l.name === "Filed by system")?.id || null;
+  }
+  if (!labelId) {
+    const created = await fetch(`${GMAIL_API}/users/me/labels`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Filed by system",
+        labelListVisibility: "labelShow",
+        messageListVisibility: "show",
+      }),
+    });
+    if (created.ok) {
+      const data = (await created.json()) as { id?: string };
+      labelId = data.id || null;
+    }
+  }
+  if (!labelId) return false;
+  const res = await fetch(`${GMAIL_API}/users/me/messages/${messageId}/modify`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ addLabelIds: [labelId] }),
+  });
+  return res.ok;
 }
 
 export function supplierLooking(from: string, subject: string) {

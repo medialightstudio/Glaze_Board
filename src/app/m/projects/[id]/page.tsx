@@ -17,6 +17,9 @@ import { DropPin } from "./drop-pin";
 import { CrlPanel } from "./crl-panel";
 import { formatSendToCrl } from "@/lib/bridge";
 import { formatCents, marginCents } from "@/lib/money";
+import { InvoiceActions } from "./invoice-actions";
+import { ChangeOrderForm } from "./change-order";
+import { SmsThread } from "./sms-thread";
 
 export default async function ProjectPage({
   params,
@@ -90,7 +93,8 @@ export default async function ProjectPage({
       <section className="rounded-lg border bg-stone-50 p-3 text-sm space-y-1">
         <h2 className="text-sm font-medium uppercase text-stone-500">Access</h2>
         <p>
-          Lockbox: <span className="font-medium">{project.lockbox_code || "—"}</span>
+          Lockbox:{" "}
+          <span className="font-medium">{project.access_lockbox_code || "—"}</span>
         </p>
         <p className="text-stone-700">{project.access_notes || "No access notes."}</p>
       </section>
@@ -118,6 +122,15 @@ export default async function ProjectPage({
         <p className="text-sm text-stone-500">No next action for this status.</p>
       )}
 
+      {["installed", "invoiced", "measured", "quote_sent", "approved", "ordering", "ready_to_schedule", "install_scheduled"].includes(
+        project.status,
+      ) ? (
+        <div className="space-y-3">
+          <InvoiceActions projectId={id} />
+          <ChangeOrderForm projectId={id} />
+        </div>
+      ) : null}
+
       <DropPin projectId={id} lat={project.lat} lng={project.lng} />
 
       <CrlPanel
@@ -129,6 +142,8 @@ export default async function ProjectPage({
           measurements: project.measurements,
         })}
       />
+
+      <SmsThread projectId={id} />
 
       <section>
         <div className="flex items-center justify-between mb-2">

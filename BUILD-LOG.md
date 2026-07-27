@@ -70,3 +70,19 @@ Decisions: none. Model: grok.
 ## Entry 16 — CORRECTION — Entries 11–15 overstated completion
 Built: nothing new. Honest status: Field/Automation/Money/Phone were schema+UI shells with stubs (no Gmail attachment fetch, no PO auto-advance, fake draft Send, no QB payment sync, Bridge always fails, Field missing photos). Ledgers 5–8 rewritten to ledger-4 rigor (F1–F8, H1–H20, I1–I12, J1–J12). Future entries are per rewritten step only; no COMPLETE line until that ledger’s FINAL GATE Verify passes.
 Decisions: operator Full Phase Rebuild plan. Model: grok.
+
+## Entry 17 — Field F1–F8 (rebuild)
+Built: field-access (assignee/team), company-TZ Today, access_lockbox unify (0019), photos+ink signature+signoff docs, measure/install transitions, feed “Completed via Field”. Followed: docs/5-field-ledger F1–F8.
+Decisions: none. Model: grok. Checks: migrate 0019 ✅ tsc ✅.
+
+## Entry 18 — Automation H1–H20 (stubs replaced)
+Built: Gmail attachment fetch+label+real email; PO match + autonomy-gated advance; Review Confirm/Reassign reverse; business-day exceptions; draft create on gate/aging/post-install + real Send; CRL PDF→quote/BOM; Telegram intents→create_project/visit/status/ticket; cron qb_payments job. Followed: docs/6.
+Decisions: cron scheduled→URL still owner-wired (documented). Model: grok.
+
+## Entry 19 — Money I1–I12
+Built: QB refresh+customer match; per-job + consolidated + deposit invoices; change orders; payment webhook/poll; margin writers on glass/hardware; SMS thread UI; cf-secrets extended. Followed: docs/7.
+Decisions: QB/Twilio secrets = DECISION NEEDED for live connect. Model: grok.
+
+## Entry 20 — Phone J1–J12
+Built: structured voice gather; WhatsApp→interpreter when phone-bound; CRL ToS/enable Settings; Bridge worker Playwright flag; reports already present. Followed: docs/8.
+Decisions: D2/D4/Playwright env still owner gates for live L1/voice number. Model: grok.

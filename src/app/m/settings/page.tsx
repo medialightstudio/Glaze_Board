@@ -8,6 +8,7 @@ import { PushToggle } from "@/components/push-toggle";
 import { ConnectionsPanel } from "./connections";
 import { AutonomyToggles } from "./autonomy";
 import { TelegramBind } from "./telegram-bind";
+import { CrlBridgeToggle } from "./crl-bridge-toggle";
 
 export default async function SettingsPage() {
   const session = await getAppSession();
@@ -73,6 +74,13 @@ export default async function SettingsPage() {
         crlTos={Boolean(data.company?.crl_tos_accepted)}
         isAdmin={isAdmin}
       />
+
+      {isAdmin ? (
+        <CrlBridgeToggle
+          tos={Boolean(data.company?.crl_tos_accepted)}
+          enabled={Boolean(data.company?.crl_bridge_enabled)}
+        />
+      ) : null}
 
       <TelegramBind
         bindCode={data.telegram?.bind_code || null}

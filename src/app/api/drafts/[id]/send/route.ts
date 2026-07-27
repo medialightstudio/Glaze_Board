@@ -1,40 +1,43 @@
-// Human-tapped send for propose-only message drafts.
+// Human-tapped Send — real Resend/Twilio delivery.
 
 import { NextResponse } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
+import { sendDraft } from "@/lib/drafts";
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getAppSession();
   if (!session) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const { id } = await params;
+  const body = (await req.json().catch(() => ({}))) as {
+    to_email?: string;
+    to_phone?: string;
+  };
 
   try {
-    const result = await withUser(session, async (c) => {
-      const { rows } = await c.query(`SELECT * FROM message_drafts WHERE id = $1`, [id]);
-      const draft = rows[0];
-      if (!draft || draft.status !== "draft") throw new Error("Draft not available.");
-      // Outbound address must be provided by office; we log send intent.
-      await c.query(
-        `UPDATE message_drafts SET status = 'sent', sent_at = now() WHERE id = $1`,
-        [id],
-      );
-      await c.query(
-        `INSERT INTO activity_events (company_id, project_id, actor, actor_user_id, verb, details)
-         VALUES ($1, $2, 'office', $3, 'draft_sent', $4::jsonb)`,
-        [
-          session.companyId,
-          draft.project_id,
-          session.userId,
-          JSON.stringify({ draft_id: id, kind: draft.kind }),
-        ],
-      );
-      return draft;
+    const draft = await withUser(session, async (c) => {
+      // Resolve default contact email from project if needed
+      let toEmail = body.to_email || null;
+      let toPhone = body.to_phone || null;
+      const d = await c.query(`SELECT * FROM message_drafts WHERE id = $1`, [id]);
+      if (!d.rows[0]) throw new Error("Draft not found.");
+      if (!toEmail && !toPhone && d.rows[0].project_id) {
+        const contact = await c.query(
+          `SELECT c.email, c.phone FROM project_contacts pc
+           JOIN contacts c ON c.id = pc.contact_id
+           WHERE pc.project_id = $1
+           ORDER BY pc.is_primary DESC NULLS LAST LIMIT 1`,
+          [d.rows[0].project_id],
+        );
+        toEmail = contact.rows[0]?.email || null;
+        toPhone = contact.rows[0]?.phone || null;
+      }
+      return sendDraft(c, session.companyId, id, { toEmail, toPhone });
     });
-    return NextResponse.json({ ok: true, draft: result });
+    return NextResponse.json({ ok: true, draft });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Failed." },

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { redirect } from "next/navigation";
+import { DraftList } from "@/components/draft-list";
 
 export default async function TodayPage() {
   const session = await getAppSession();
@@ -15,6 +16,7 @@ export default async function TodayPage() {
   let urgent: { id: string; issue: string }[] = [];
   let exceptions: { id: string; summary: string; project_id: string | null }[] = [];
   let reviewCount = 0;
+  let drafts: { id: string; kind: string; body: string; project_id: string | null }[] = [];
 
   try {
     await withUser(session, async (client) => {
@@ -79,6 +81,15 @@ export default async function TodayPage() {
       } catch {
         /* automation */
       }
+      try {
+        const d = await client.query(
+          `SELECT id, kind, body, project_id FROM message_drafts
+           WHERE status = 'draft' ORDER BY created_at DESC LIMIT 10`,
+        );
+        drafts = d.rows;
+      } catch {
+        /* automation */
+      }
     });
   } catch {
     /* db blank */
@@ -99,6 +110,8 @@ export default async function TodayPage() {
       {empty ? (
         <p className="text-stone-600">Nothing needs you. Enjoy it.</p>
       ) : null}
+
+      <DraftList drafts={drafts} />
 
       <Section title="Urgent tickets">
         {urgent.length === 0 ? (

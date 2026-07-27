@@ -105,12 +105,24 @@ export async function PATCH(
       }
 
       if (body.action === "send") {
-        // Human-tapped only — we mark sent; actual email is prepare-only via draft.
+        const q = await getQuote(c, id);
+        const { createDraft, sendDraft } = await import("@/lib/drafts");
+        const share = q.share_token
+          ? `${process.env.BETTER_AUTH_URL || ""}/q/${q.share_token}`
+          : "";
+        const draft = await createDraft(c, session.companyId, {
+          projectId: q.project_id,
+          kind: "quote_send",
+          channel: "email",
+          body: `Here is your quote${share ? `: ${share}` : ""}.`,
+        });
+        if (body.to_email) {
+          await sendDraft(c, session.companyId, draft.id, { toEmail: String(body.to_email) });
+        }
         await c.query(
           `UPDATE quotes SET status = 'sent', sent_at = now(), updated_at = now() WHERE id = $1`,
           [id],
         );
-        const q = await getQuote(c, id);
         if (q.project_id) {
           const proj = await c.query(`SELECT status FROM projects WHERE id = $1`, [q.project_id]);
           if (["lead", "measure_scheduled", "measured"].includes(proj.rows[0]?.status)) {
@@ -126,7 +138,7 @@ export async function PATCH(
             );
           }
         }
-        return { ok: true, share_token: q.share_token };
+        return { ok: true, share_token: q.share_token, draft_id: draft.id };
       }
 
       return { ok: true };
