@@ -93,3 +93,11 @@ npm run seed -- --company "Lumex" --email "you@example.com" --password '…' --n
 ```
 
 Or run migrate once against live with `MIGRATE_DATABASE_URL`, then seed while `BETTER_AUTH_URL=https://glazeboard.com` and the site is up.
+
+## Live status
+
+Deployed Worker: `glazeboard`  
+URLs: https://glazeboard.com · https://www.glazeboard.com · https://glazeboard.medialightstudia.workers.dev
+
+**R2:** not enabled on the account yet. Document uploads stay unavailable until you open **Dashboard → R2**, accept/enable R2, create bucket `docs`, then restore the `r2_buckets` binding in `wrangler.jsonc` and redeploy.
+
