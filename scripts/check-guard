@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// Fails if protected paths changed while MODEL is not sonnet (default: composer).
+// Fails if protected paths changed while MODEL is not a foundation model (default: composer).
+// Foundation models: sonnet, grok (operator override for A–F batch).
 
 const { execSync } = require("node:child_process");
 
 const model = (process.env.MODEL || "composer").toLowerCase();
+const foundationModels = new Set(["sonnet", "grok"]);
 
 const protectedPatterns = [
   /^migrations\//,
@@ -67,16 +69,16 @@ if (hits.length === 0) {
   process.exit(0);
 }
 
-if (model === "sonnet") {
-  console.log("check:guard OK — MODEL=sonnet; protected files allowed:");
+if (foundationModels.has(model)) {
+  console.log(`check:guard OK — MODEL=${model}; protected files allowed:`);
   for (const f of hits) console.log(`  ${f}`);
   process.exit(0);
 }
 
 console.error(
-  "check:guard FAIL — protected files changed while MODEL is not sonnet.",
+  "check:guard FAIL — protected files changed while MODEL is not a foundation model.",
 );
-console.error(`MODEL=${model} (set MODEL=sonnet for foundation steps).`);
+console.error(`MODEL=${model} (set MODEL=grok or MODEL=sonnet for foundation steps).`);
 console.error("Protected files:");
 for (const f of hits) console.error(`  ${f}`);
 process.exit(1);
