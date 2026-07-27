@@ -14,6 +14,9 @@ import {
   UploadDoc,
 } from "./actions";
 import { DropPin } from "./drop-pin";
+import { CrlPanel } from "./crl-panel";
+import { formatSendToCrl } from "@/lib/bridge";
+import { formatCents, marginCents } from "@/lib/money";
 
 export default async function ProjectPage({
   params,
@@ -45,19 +48,31 @@ export default async function ProjectPage({
       `SELECT id, file, type, created_at FROM documents WHERE project_id = $1 ORDER BY created_at DESC`,
       [id],
     );
+    const company = await c.query(
+      `SELECT crl_bridge_enabled, crl_tos_accepted FROM companies WHERE id = $1`,
+      [session.companyId],
+    );
     return {
       project,
       glass: glass.rows,
       hardware: hardware.rows[0] || null,
       feed: feed.rows,
       docs: docs.rows,
+      bridgeOn: Boolean(
+        company.rows[0]?.crl_bridge_enabled && company.rows[0]?.crl_tos_accepted,
+      ),
     };
   });
   if (!data) notFound();
 
-  const { project, glass, hardware, feed, docs } = data;
+  const { project, glass, hardware, feed, docs, bridgeOn } = data;
   const next = nextActionFor(project.status as Status);
   const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(project.site_address)}`;
+  const margin = marginCents(
+    project.quote_price_cents || 0,
+    project.margin_glass_cents || 0,
+    project.margin_hardware_cents || 0,
+  );
 
   return (
     <div className="p-4 max-w-3xl space-y-5">
@@ -71,6 +86,23 @@ export default async function ProjectPage({
         </div>
         {project.note ? <p className="mt-2 text-sm text-stone-600">{project.note}</p> : null}
       </div>
+
+      <section className="rounded-lg border bg-stone-50 p-3 text-sm space-y-1">
+        <h2 className="text-sm font-medium uppercase text-stone-500">Access</h2>
+        <p>
+          Lockbox: <span className="font-medium">{project.lockbox_code || "—"}</span>
+        </p>
+        <p className="text-stone-700">{project.access_notes || "No access notes."}</p>
+      </section>
+
+      <section className="text-sm text-stone-600">
+        Margin {formatCents(margin)}{" "}
+        <span className="text-stone-400">
+          (price {formatCents(project.quote_price_cents || 0)} − glass{" "}
+          {formatCents(project.margin_glass_cents || 0)} − hardware{" "}
+          {formatCents(project.margin_hardware_cents || 0)})
+        </span>
+      </section>
 
       <div className="flex flex-wrap gap-2 items-center">
         <GlassChip projectId={id} order={glass[0] || null} />
@@ -87,6 +119,16 @@ export default async function ProjectPage({
       )}
 
       <DropPin projectId={id} lat={project.lat} lng={project.lng} />
+
+      <CrlPanel
+        projectId={id}
+        bridgeEnabled={bridgeOn}
+        block={formatSendToCrl({
+          title: project.title,
+          site_address: project.site_address,
+          measurements: project.measurements,
+        })}
+      />
 
       <section>
         <div className="flex items-center justify-between mb-2">

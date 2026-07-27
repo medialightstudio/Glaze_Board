@@ -46,3 +46,23 @@ Decisions: none. Model: grok. OBSERVED: verify web-push under `npm run preview` 
 Built: check:rls/guard/addr/size green; backup script; clickthrough checklist; README backup note. Followed: ledger G3.
 Decisions: Cloudflare Access stay/lift left to owner. Model: grok.
 Checks: rls ✅ guard ✅ (MODEL=grok) addr ✅ size 2261.74 KiB.
+
+## Entry 11 — Phase 0 — Field + ledgers + R2 restore
+Built: docs/5–8 ledgers; wrangler R2 DOCS + cron triggers; migrations 0015–0018; Field Today/job/complete+signature; approved deps (+pdf-lib, fetch adapters). Followed: plan Phase 0; DEC-29.
+Decisions: contractor quote link stays disabled (D5); Bridge L1 gated on ToS. Model: grok.
+
+## Entry 12 — Automation H1–H6
+Built: ai/, pdf extract+quote PDF, mail-ingest+Gmail OAuth, Review Queue UI/API, exceptions+digest+notify, Quote Builder+/q share, CRL L0 panel, Telegram bind+webhook+STT. Followed: docs/6-automation-ledger; systems §1–2.
+Decisions: none. Model: grok.
+
+## Entry 13 — Money I1–I4
+Built: QB OAuth+invoice create, Billing page + customer Generate invoice, deposits/change_orders schema, margins on project, SMS threads schema + Twilio SMS webhook. Followed: docs/7-money-ledger; DEC-10, DEC-30.
+Decisions: QBO assumed. Model: grok.
+
+## Entry 14 — Phone J1–J4 + CRL Bridge
+Built: Twilio voice webhook, WhatsApp/SMS ingest, bridge_jobs API + bridge/worker.mjs, Reports page, autonomy toggles in Settings. Followed: docs/8-phone-ledger; systems §1.5.
+Decisions: L1 fails closed to L0 without Playwright/ToS. Model: grok.
+
+## Entry 15 — UX system
+Built: CSS notebook tokens, review/quote motion, Settings connection rows, Quote canvas branding header, Review split pane. Followed: product UI rules; plan UX section.
+Decisions: none. Model: grok.

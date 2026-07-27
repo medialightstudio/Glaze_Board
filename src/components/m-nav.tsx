@@ -20,7 +20,10 @@ const sales = [
   { href: "/m/billing", label: "Billing" },
 ];
 
-const settings = [{ href: "/m/settings", label: "Settings" }];
+const settings = [
+  { href: "/m/reports", label: "Reports" },
+  { href: "/m/settings", label: "Settings" },
+];
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();

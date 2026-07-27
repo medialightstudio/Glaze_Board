@@ -99,5 +99,5 @@ Or run migrate once against live with `MIGRATE_DATABASE_URL`, then seed while `B
 Deployed Worker: `glazeboard`  
 URLs: https://glazeboard.com · https://www.glazeboard.com · https://glazeboard.medialightstudia.workers.dev
 
-**R2:** not enabled on the account yet. Document uploads stay unavailable until you open **Dashboard → R2**, accept/enable R2, create bucket `docs`, then restore the `r2_buckets` binding in `wrangler.jsonc` and redeploy.
+**R2:** `wrangler.jsonc` includes the `DOCS` → `docs` binding again. Before deploy: Dashboard → R2 → enable → create bucket `docs` (or `npm run cf:r2`). Cron triggers: `*/10` mail poll and `0 14 * * *` digest (wire Worker scheduled handler or hit `/api/cron` with `CRON_SECRET`).
 

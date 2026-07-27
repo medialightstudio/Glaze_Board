@@ -13,6 +13,8 @@ export default async function TodayPage() {
   let willCall: { id: string; title: string; order_number: string }[] = [];
   let visits: { id: string; type: string; starts_at: string; title: string }[] = [];
   let urgent: { id: string; issue: string }[] = [];
+  let exceptions: { id: string; summary: string; project_id: string | null }[] = [];
+  let reviewCount = 0;
 
   try {
     await withUser(session, async (client) => {
@@ -60,13 +62,36 @@ export default async function TodayPage() {
       } catch {
         /* later */
       }
+      try {
+        const ex = await client.query(
+          `SELECT id, summary, project_id FROM exceptions
+           WHERE resolved = false ORDER BY created_at DESC LIMIT 20`,
+        );
+        exceptions = ex.rows;
+      } catch {
+        /* automation */
+      }
+      try {
+        const rq = await client.query(
+          `SELECT count(*)::int AS n FROM review_queue_items WHERE status = 'open'`,
+        );
+        reviewCount = rq.rows[0]?.n || 0;
+      } catch {
+        /* automation */
+      }
     });
   } catch {
     /* db blank */
   }
 
   const empty =
-    urgent.length + visits.length + ready.length + willCall.length === 0;
+    urgent.length +
+      visits.length +
+      ready.length +
+      willCall.length +
+      exceptions.length +
+      reviewCount ===
+    0;
 
   return (
     <div className="p-4 space-y-6 max-w-3xl">
@@ -125,8 +150,27 @@ export default async function TodayPage() {
         )}
       </Section>
 
+      <Section title="Review Queue">
+        {reviewCount === 0 ? (
+          <Placeholder note="Clear" />
+        ) : (
+          <CardLink href="/m/review" label={`${reviewCount} items need a look`} action="Review" />
+        )}
+      </Section>
+
       <Section title="Exceptions">
-        <Placeholder note="Overdue acks and aging quotes arrive with automation" />
+        {exceptions.length === 0 ? (
+          <Placeholder note="None" />
+        ) : (
+          exceptions.map((e) => (
+            <CardLink
+              key={e.id}
+              href={e.project_id ? `/m/projects/${e.project_id}` : "/m"}
+              label={e.summary}
+              action="Open"
+            />
+          ))
+        )}
       </Section>
     </div>
   );

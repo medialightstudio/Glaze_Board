@@ -8,3 +8,14 @@ export const taskColors = {
 } as const;
 
 export type TaskColorKey = keyof typeof taskColors;
+
+/** CSS variable names mirrored in globals.css */
+export const designTokens = {
+  ink: "var(--gb-ink)",
+  muted: "var(--gb-muted)",
+  rail: "var(--gb-rail)",
+  measure: "var(--gb-measure)",
+  install: "var(--gb-install)",
+  service: "var(--gb-service)",
+  urgent: "var(--gb-urgent)",
+} as const;

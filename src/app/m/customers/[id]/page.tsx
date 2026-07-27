@@ -7,6 +7,8 @@ import { withUser } from "@/lib/db-core";
 import { getAccount, listContacts, listProjectsForAccount } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { AddContactDialog } from "./add-contact";
+import { formatCents } from "@/lib/money";
+import { CustomerInvoiceButton } from "./invoice-button";
 
 export default async function CustomerDetailPage({
   params,
@@ -22,11 +24,32 @@ export default async function CustomerDetailPage({
     if (!account) return null;
     const contacts = await listContacts(c, id);
     const projects = await listProjectsForAccount(c, id);
-    return { account, contacts, projects };
+    const unbilled = await c.query(
+      `SELECT p.id, p.title, p.quote_price_cents FROM projects p
+       WHERE p.account_id = $1 AND p.status = 'installed'
+         AND NOT EXISTS (
+           SELECT 1 FROM invoice_lines il
+           JOIN invoices inv ON inv.id = il.invoice_id
+           WHERE il.project_id = p.id AND inv.status <> 'void'
+         )`,
+      [id],
+    );
+    const unpaid = await c.query(
+      `SELECT COALESCE(SUM(balance_cents),0)::int AS n FROM invoices
+       WHERE account_id = $1 AND status <> 'void'`,
+      [id],
+    );
+    return {
+      account,
+      contacts,
+      projects,
+      unbilled: unbilled.rows,
+      unpaid: unpaid.rows[0]?.n || 0,
+    };
   });
   if (!data) notFound();
 
-  const { account, contacts, projects } = data;
+  const { account, contacts, projects, unbilled, unpaid } = data;
 
   return (
     <div className="p-4 max-w-3xl space-y-6">
@@ -101,11 +124,31 @@ export default async function CustomerDetailPage({
         )}
       </section>
 
-      <section>
-        <h2 className="text-sm font-medium uppercase text-stone-500 mb-2">
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium uppercase text-stone-500">
           Completed & unbilled
         </h2>
-        <p className="text-sm text-stone-500">Arrives with Billing.</p>
+        <p className="text-sm text-stone-600">
+          Unpaid balance: {formatCents(unpaid)}
+        </p>
+        {unbilled.length === 0 ? (
+          <p className="text-sm text-stone-500">None.</p>
+        ) : (
+          <>
+            <ul className="space-y-1">
+              {unbilled.map((p: { id: string; title: string; quote_price_cents: number | null }) => (
+                <li key={p.id} className="flex justify-between text-sm border-b py-2">
+                  <span>{p.title}</span>
+                  <span className="tabular-nums">{formatCents(p.quote_price_cents || 0)}</span>
+                </li>
+              ))}
+            </ul>
+            <CustomerInvoiceButton
+              accountId={id}
+              projectIds={unbilled.map((p: { id: string }) => p.id)}
+            />
+          </>
+        )}
       </section>
     </div>
   );

@@ -9,9 +9,15 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/service") ||
+    pathname.startsWith("/api/public") ||
+    pathname.startsWith("/api/webhooks") ||
+    pathname.startsWith("/api/cron") ||
+    pathname.startsWith("/api/bridge") ||
     pathname.startsWith("/service/") ||
+    pathname.startsWith("/q/") ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.svg"
+    pathname === "/favicon.svg" ||
+    pathname === "/manifest.webmanifest"
   ) {
     return NextResponse.next();
   }

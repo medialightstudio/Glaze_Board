@@ -1,7 +1,6 @@
 /**
  * Cloudflare Worker config for Glaze Board (OpenNext).
- * R2 DOCS binding omitted until R2 is enabled on the account (Dashboard → R2).
- * After enabling: create bucket `docs`, then restore the r2_buckets block from docs/cloudflare-deploy.md.
+ * Requires R2 enabled + bucket `docs` on the account before deploy.
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
@@ -18,6 +17,15 @@
 		{ "pattern": "glazeboard.com", "custom_domain": true },
 		{ "pattern": "www.glazeboard.com", "custom_domain": true }
 	],
+	"r2_buckets": [
+		{
+			"binding": "DOCS",
+			"bucket_name": "docs"
+		}
+	],
+	"triggers": {
+		"crons": ["*/10 * * * *", "0 14 * * *"]
+	},
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
