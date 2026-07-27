@@ -284,10 +284,34 @@ export async function maybeFireGate(
 export type NextAction = {
   label: string;
   to?: Status;
-  tool?: "book_measure" | "book_install" | "create_quote" | "invoice";
+  tool?: "book_measure" | "book_install" | "create_quote" | "invoice" | "resume";
 };
 
-export function nextActionFor(status: Status): NextAction | null {
+/** Most recent non-hold/lost status from timestamps — used to Resume. */
+export function priorStatusFromTimestamps(
+  timestamps: Record<string, string> | null | undefined,
+): Status {
+  const entries = Object.entries(timestamps || {}).filter(
+    ([s]) => s !== "on_hold" && s !== "lost" && (STATUSES as readonly string[]).includes(s),
+  ) as [Status, string][];
+  entries.sort(
+    (a, b) => new Date(b[1]).getTime() - new Date(a[1]).getTime(),
+  );
+  return entries[0]?.[0] || "lead";
+}
+
+export function nextActionFor(
+  status: Status,
+  timestamps?: Record<string, string> | null,
+): NextAction | null {
+  if (status === "on_hold" || status === "lost") {
+    const prior = priorStatusFromTimestamps(timestamps);
+    return {
+      label: status === "on_hold" ? `Resume · ${prior.replace(/_/g, " ")}` : "Reopen",
+      to: prior,
+      tool: "resume",
+    };
+  }
   const map: Partial<Record<Status, NextAction>> = {
     lead: { label: "Book measure", to: "measure_scheduled", tool: "book_measure" },
     measure_scheduled: { label: "Mark measured", to: "measured" },

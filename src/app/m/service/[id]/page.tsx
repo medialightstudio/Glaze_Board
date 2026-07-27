@@ -1,10 +1,12 @@
-// Ticket detail.
+// Ticket detail — link to project + book service visit into Dispatch/Field.
 
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { Badge } from "@/components/ui/badge";
+import { OpsPage } from "@/components/ops/ops-page";
+import { BookServiceVisit } from "../book-service";
 
 export default async function TicketPage({
   params,
@@ -15,45 +17,64 @@ export default async function TicketPage({
   if (!session) redirect("/login");
   const { id } = await params;
 
-  const ticket = await withUser(session, async (c) => {
+  const data = await withUser(session, async (c) => {
     const { rows } = await c.query(`SELECT * FROM tickets WHERE id = $1`, [id]);
-    return rows[0] || null;
+    const ticket = rows[0] || null;
+    if (!ticket) return null;
+    let project = null;
+    if (ticket.project_id) {
+      const p = await c.query(
+        `SELECT id, title, status FROM projects WHERE id = $1`,
+        [ticket.project_id],
+      );
+      project = p.rows[0] || null;
+    }
+    const users = await c.query(
+      `SELECT id, name FROM "user" WHERE company_id = $1 AND active = true ORDER BY name`,
+      [session.companyId],
+    );
+    const visits = await c.query(
+      `SELECT id, starts_at::text, type FROM visits
+       WHERE ticket_id = $1 ORDER BY starts_at DESC LIMIT 5`,
+      [id],
+    );
+    return { ticket, project, users: users.rows, visits: visits.rows };
   });
-  if (!ticket) notFound();
+  if (!data) notFound();
 
-  const project = ticket.project_id
-    ? await withUser(session, async (c) => {
-        const { rows } = await c.query(
-          `SELECT id, title, status FROM projects WHERE id = $1`,
-          [ticket.project_id],
-        );
-        return rows[0] || null;
-      })
-    : null;
-
+  const { ticket, project, users, visits } = data;
   const mapUrl = ticket.address
     ? `https://maps.google.com/?q=${encodeURIComponent(ticket.address)}`
     : null;
 
   return (
-    <div className="p-4 max-w-xl space-y-4">
-      <Link href="/m/service" className="text-sm text-stone-500 hover:underline">
-        ← Service
-      </Link>
-      <div>
-        <h1 className="text-xl font-semibold">
-          {ticket.contact_name || ticket.address || "Ticket"}
-        </h1>
-        <div className="mt-1 flex flex-wrap gap-2">
-          <Badge>{ticket.status}</Badge>
-          <Badge variant={ticket.urgency === "urgent" ? "destructive" : "secondary"}>
-            {ticket.urgency}
-          </Badge>
-          {ticket.classification ? (
-            <Badge variant="outline">{ticket.classification}</Badge>
-          ) : null}
-          {ticket.no_match ? <Badge variant="outline">no matching project</Badge> : null}
-        </div>
+    <OpsPage
+      title={ticket.contact_name || ticket.address || "Ticket"}
+      purpose="Schedule into Dispatch — same visit system as measures."
+      actions={
+        <BookServiceVisit
+          ticketId={id}
+          projectId={ticket.project_id || undefined}
+          users={users}
+        />
+      }
+    >
+      <p>
+        <Link href="/m/service" className="text-sm text-stone-500 hover:underline">
+          ← Service
+        </Link>
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Badge>{ticket.status}</Badge>
+        <Badge variant={ticket.urgency === "urgent" ? "destructive" : "secondary"}>
+          {ticket.urgency}
+        </Badge>
+        {ticket.classification ? (
+          <Badge variant="outline">{ticket.classification}</Badge>
+        ) : null}
+        {ticket.no_match ? (
+          <Badge variant="outline">no matching project</Badge>
+        ) : null}
       </div>
 
       <section className="space-y-1 text-sm">
@@ -74,7 +95,12 @@ export default async function TicketPage({
         {ticket.address ? (
           <p>
             {mapUrl ? (
-              <a href={mapUrl} target="_blank" rel="noreferrer" className="underline">
+              <a
+                href={mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
                 {ticket.address}
               </a>
             ) : (
@@ -85,12 +111,16 @@ export default async function TicketPage({
       </section>
 
       <section>
-        <h2 className="text-sm font-medium uppercase text-stone-500 mb-1">Issue</h2>
+        <h2 className="text-sm font-medium uppercase text-stone-500 mb-1">
+          Issue
+        </h2>
         <p className="text-sm whitespace-pre-wrap">{ticket.issue}</p>
       </section>
 
       <section>
-        <h2 className="text-sm font-medium uppercase text-stone-500 mb-1">Project</h2>
+        <h2 className="text-sm font-medium uppercase text-stone-500 mb-1">
+          Project
+        </h2>
         {project ? (
           <Link href={`/m/projects/${project.id}`} className="text-sm underline">
             {project.title} · {project.status.replace(/_/g, " ")}
@@ -100,7 +130,25 @@ export default async function TicketPage({
         )}
       </section>
 
+      {visits.length > 0 ? (
+        <section>
+          <h2 className="text-sm font-medium uppercase text-stone-500 mb-1">
+            Visits
+          </h2>
+          <ul className="text-sm space-y-1">
+            {visits.map((v: { id: string; type: string; starts_at: string }) => (
+              <li key={v.id}>
+                <Link href={`/f/jobs/${v.id}`} className="underline capitalize">
+                  {v.type}
+                </Link>{" "}
+                · {new Date(v.starts_at).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <p className="text-xs text-stone-400">Source: {ticket.source}</p>
-    </div>
+    </OpsPage>
   );
 }

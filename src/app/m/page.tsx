@@ -33,6 +33,12 @@ export default async function TodayPage() {
   let exceptions: { id: string; summary: string; project_id: string | null }[] =
     [];
   let reviewCount = 0;
+  let holds: {
+    id: string;
+    title: string;
+    hold_reason?: string;
+    hold_until?: string;
+  }[] = [];
   let drafts: {
     id: string;
     kind: string;
@@ -117,6 +123,19 @@ export default async function TodayPage() {
       } catch {
         /* automation */
       }
+      try {
+        const h = await client.query(
+          `SELECT id, title, hold_reason, hold_until::text
+           FROM projects
+           WHERE status = 'on_hold'
+             AND (hold_until IS NULL OR hold_until <= now() + interval '1 day')
+           ORDER BY hold_until NULLS FIRST, updated_at DESC
+           LIMIT 20`,
+        );
+        holds = h.rows;
+      } catch {
+        /* ok */
+      }
     });
   } catch {
     /* db blank */
@@ -128,6 +147,7 @@ export default async function TodayPage() {
       ready.length +
       willCall.length +
       exceptions.length +
+      holds.length +
       reviewCount ===
     0;
 
@@ -242,6 +262,22 @@ export default async function TodayPage() {
               href={e.project_id ? `/m/projects/${e.project_id}` : "/m"}
               label={e.summary}
               action="Open"
+            />
+          ))
+        )}
+      </OpsSection>
+
+      <OpsSection title="Holds due" count={holds.length || undefined}>
+        {holds.length === 0 ? (
+          <OpsEmpty>None</OpsEmpty>
+        ) : (
+          holds.map((h) => (
+            <ActionCard
+              key={h.id}
+              href={`/m/projects/${h.id}`}
+              label={h.title}
+              meta={h.hold_reason || "On hold — follow up"}
+              action="Resume"
             />
           ))
         )}

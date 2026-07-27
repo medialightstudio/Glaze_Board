@@ -50,6 +50,13 @@ export async function POST(req: Request) {
           // Already past that status — visit still booked.
         }
       }
+      if (body.ticket_id) {
+        await c.query(
+          `UPDATE tickets SET status = 'scheduled', updated_at = now()
+           WHERE id = $1 AND status = 'new'`,
+          [body.ticket_id],
+        );
+      }
       return rows[0];
     });
     return NextResponse.json(visit, { status: 201 });

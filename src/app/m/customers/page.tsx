@@ -6,6 +6,7 @@ import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { listAccounts } from "@/lib/db";
 import { AddCustomerDialog } from "./add-dialog";
+import { OpsPage } from "@/components/ops/ops-page";
 
 export default async function CustomersPage() {
   const session = await getAppSession();
@@ -14,11 +15,11 @@ export default async function CustomersPage() {
   const accounts = await withUser(session, (c) => listAccounts(c));
 
   return (
-    <div className="p-4 max-w-3xl space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Customers</h1>
-        <AddCustomerDialog />
-      </div>
+    <OpsPage
+      title="Customers"
+      purpose="Contractors and Direct — every job links here."
+      actions={<AddCustomerDialog />}
+    >
       {accounts.length === 0 ? (
         <p className="text-sm text-stone-500">No customers yet.</p>
       ) : (
@@ -48,6 +49,6 @@ export default async function CustomersPage() {
           </tbody>
         </table>
       )}
-    </div>
+    </OpsPage>
   );
 }

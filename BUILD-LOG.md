@@ -94,3 +94,7 @@ Decisions: deploy hotfix from last good Worker commit for production; enterprise
 ## Entry 22 — Connected Ops UX
 Built: shared OpsPage/ActionCard/BookVisitSheet; Project hub (contacts, access, chips+Not Needed, Details, entity links); next-action opens book/quote/invoice tools; Today links+will-call project_id fix+task colors; Pipeline/Dispatch chrome; login role land; search tickets/visits; nav Review badge + notification unread badge. Followed: Connected Ops UX plan; product next-action rule.
 Decisions: none. Model: grok. Checks: tsc ✅.
+
+## Entry 23 — Connected Ops UX pass 2
+Built: glass ack prompt (Glassfab # / promised date); Hold/Lost/Resume + feed Undo; Today Holds due; Service Ops chrome + Book service visit; Field Today ticket titles; Quick-create typeahead; Quotes/Billing/Customers/Review on OpsPage with project deep-links. Followed: improve cohesion after Connected Ops.
+Decisions: none. Model: grok. Checks: tsc ✅.

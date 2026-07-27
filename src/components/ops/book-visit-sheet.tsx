@@ -22,6 +22,7 @@ export function BookVisitSheet({
   users,
   projects,
   projectId: fixedProjectId,
+  ticketId: fixedTicketId,
   defaultType = "measure",
   triggerLabel = "Book visit",
   open: controlledOpen,
@@ -31,6 +32,7 @@ export function BookVisitSheet({
   users: UserOpt[];
   projects?: ProjectOpt[];
   projectId?: string;
+  ticketId?: string;
   defaultType?: "measure" | "install" | "service";
   triggerLabel?: string;
   open?: boolean;
@@ -58,6 +60,7 @@ export function BookVisitSheet({
       body: JSON.stringify({
         type,
         project_id: (fixedProjectId || projectId) || undefined,
+        ticket_id: fixedTicketId || undefined,
         starts_at: new Date(startsAt).toISOString(),
         assignees: assignee ? [assignee] : [],
       }),

@@ -15,6 +15,8 @@ import {
   UploadDoc,
   AccessEditor,
   AddProjectContact,
+  HoldLostControls,
+  FeedUndo,
 } from "./actions";
 import { DropPin } from "./drop-pin";
 import { CrlPanel } from "./crl-panel";
@@ -47,7 +49,7 @@ export default async function ProjectPage({
       [id],
     );
     const feed = await c.query(
-      `SELECT id, actor, verb, details, created_at
+      `SELECT id, actor, verb, details, created_at, undone_by_event_id
        FROM activity_events WHERE project_id = $1
        ORDER BY created_at DESC LIMIT 40`,
       [id],
@@ -148,7 +150,10 @@ export default async function ProjectPage({
     users,
     todayVisitId,
   } = data;
-  const next = nextActionFor(project.status as Status);
+  const next = nextActionFor(
+    project.status as Status,
+    project.status_timestamps as Record<string, string> | null,
+  );
   const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(project.site_address)}`;
   const margin = marginCents(
     project.quote_price_cents || 0,
@@ -251,12 +256,13 @@ export default async function ProjectPage({
         </div>
       </OpsSection>
 
-      <div>
+      <div className="space-y-2">
         {next ? (
           <NextActionButton projectId={id} next={next} users={users} />
         ) : (
           <p className="text-sm text-stone-500">No next action for this status.</p>
         )}
+        <HoldLostControls projectId={id} status={project.status} />
       </div>
 
       {next?.tool !== "invoice" &&
@@ -405,6 +411,7 @@ export default async function ProjectPage({
               verb: string;
               details: Record<string, unknown>;
               created_at: string;
+              undone_by_event_id?: string | null;
             }) => (
               <li key={e.id} className="text-sm rounded border px-3 py-2">
                 <span className="font-medium">{e.verb.replace(/_/g, " ")}</span>
@@ -414,6 +421,9 @@ export default async function ProjectPage({
                     ? ` · ${String(e.details.from)} → ${String(e.details.to)}`
                     : ""}
                 </span>
+                {e.verb === "status_changed" && !e.undone_by_event_id ? (
+                  <FeedUndo projectId={id} eventId={e.id} />
+                ) : null}
                 <div className="text-xs text-stone-400">
                   {new Date(e.created_at).toLocaleString()}
                 </div>

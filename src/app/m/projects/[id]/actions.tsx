@@ -92,6 +92,14 @@ export function NextActionButton({
     );
   }
 
+  if (next.tool === "resume") {
+    return (
+      <Button disabled={busy || !next.to} onClick={() => go()}>
+        {next.label}
+      </Button>
+    );
+  }
+
   if (next.to === "approved" && !ask) {
     return (
       <Button onClick={() => setAsk(true)} disabled={busy}>
@@ -147,6 +155,10 @@ export function GlassChip({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [prompt, setPrompt] = useState<"ack" | null>(null);
+  const [supplierNo, setSupplierNo] = useState("");
+  const [promised, setPromised] = useState("");
+  const [price, setPrice] = useState("");
 
   async function prepare() {
     setBusy(true);
@@ -161,16 +173,28 @@ export function GlassChip({
     router.refresh();
   }
 
-  async function advance(to?: string) {
+  async function advance(to?: string, extra: Record<string, string | number> = {}) {
     if (!order) return;
     setBusy(true);
     await fetch(`/api/projects/${projectId}/glass`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "advance", order_id: order.id, to }),
+      body: JSON.stringify({ action: "advance", order_id: order.id, to, ...extra }),
     });
     setBusy(false);
+    setPrompt(null);
     router.refresh();
+  }
+
+  async function onTap() {
+    if (!order) return;
+    const next = GLASS_NEXT[order.status];
+    if (!next) return;
+    if (next === "acknowledged") {
+      setPrompt("ack");
+      return;
+    }
+    await advance(next);
   }
 
   async function markNotNeeded() {
@@ -217,13 +241,55 @@ export function GlassChip({
     );
   }
 
+  if (prompt === "ack") {
+    return (
+      <div className="flex flex-wrap gap-2 items-center rounded border px-2 py-1.5 bg-stone-50">
+        <Input
+          className="w-36"
+          placeholder="Glassfab #"
+          value={supplierNo}
+          onChange={(e) => setSupplierNo(e.target.value)}
+        />
+        <Input
+          className="w-36"
+          type="date"
+          value={promised}
+          onChange={(e) => setPromised(e.target.value)}
+          title="Promised date"
+        />
+        <Input
+          className="w-28"
+          placeholder="Price ¢"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+        <Button
+          size="sm"
+          disabled={busy}
+          onClick={() =>
+            advance("acknowledged", {
+              supplier_order_number: supplierNo.trim(),
+              promised_date: promised,
+              ...(price.trim() ? { price: Number(price) } : {}),
+            })
+          }
+        >
+          Acknowledged
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setPrompt(null)}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
   const next = GLASS_NEXT[order.status];
   return (
     <div className="inline-flex flex-wrap gap-1 items-center">
       <button
         type="button"
         disabled={busy || !next}
-        onClick={() => advance(next)}
+        onClick={onTap}
         className="inline-flex"
         title="Tap to advance"
       >
@@ -509,5 +575,101 @@ export function AddProjectContact({
         Cancel
       </Button>
     </div>
+  );
+}
+
+export function HoldLostControls({
+  projectId,
+  status,
+}: {
+  projectId: string;
+  status: string;
+}) {
+  const router = useRouter();
+  const [mode, setMode] = useState<"hold" | "lost" | null>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (status === "on_hold" || status === "lost" || status === "paid") {
+    return null;
+  }
+
+  async function go(to: "on_hold" | "lost") {
+    if (!reason.trim()) return;
+    setBusy(true);
+    await fetch(`/api/projects/${projectId}/transition`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ to, reason: reason.trim() }),
+    });
+    setBusy(false);
+    setMode(null);
+    setReason("");
+    router.refresh();
+  }
+
+  if (mode) {
+    return (
+      <div className="flex flex-wrap gap-2 items-center text-sm">
+        <Input
+          className="max-w-xs"
+          placeholder={mode === "hold" ? "Hold reason" : "Lost reason"}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+        <Button
+          size="sm"
+          variant={mode === "lost" ? "destructive" : "outline"}
+          disabled={busy || !reason.trim()}
+          onClick={() => go(mode === "hold" ? "on_hold" : "lost")}
+        >
+          Confirm {mode === "hold" ? "hold" : "lost"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setMode(null)}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <Button size="sm" variant="outline" onClick={() => setMode("hold")}>
+        On hold
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setMode("lost")}>
+        Lost
+      </Button>
+    </div>
+  );
+}
+
+export function FeedUndo({
+  projectId,
+  eventId,
+}: {
+  projectId: string;
+  eventId: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      className="text-xs underline text-stone-500 ml-2"
+      onClick={async () => {
+        setBusy(true);
+        await fetch(`/api/projects/${projectId}/undo`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ event_id: eventId }),
+        });
+        setBusy(false);
+        router.refresh();
+      }}
+    >
+      Undo
+    </button>
   );
 }

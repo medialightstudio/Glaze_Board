@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { ReviewActions } from "./actions";
+import { OpsPage } from "@/components/ops/ops-page";
 
 export default async function ReviewPage() {
   const session = await getAppSession();
@@ -23,15 +24,14 @@ export default async function ReviewPage() {
   });
 
   return (
-    <div className="p-4 max-w-5xl space-y-4">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Review Queue</h1>
-          <p className="text-sm text-stone-500">Confirm matches before anything advances silently.</p>
-        </div>
+    <OpsPage
+      title="Review Queue"
+      purpose="Confirm matches before anything advances silently."
+      wide
+      actions={
         <span className="text-sm text-stone-600">{items.length} open</span>
-      </header>
-
+      }
+    >
       {items.length === 0 ? (
         <p className="text-stone-600 py-10 text-center">Queue is clear.</p>
       ) : (
@@ -103,6 +103,6 @@ export default async function ReviewPage() {
           )}
         </ul>
       )}
-    </div>
+    </OpsPage>
   );
 }

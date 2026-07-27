@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { AddContactDialog } from "./add-contact";
 import { formatCents } from "@/lib/money";
 import { CustomerInvoiceButton } from "./invoice-button";
+import { OpsPage, OpsSection } from "@/components/ops/ops-page";
 
 export default async function CustomerDetailPage({
   params,
@@ -52,61 +53,65 @@ export default async function CustomerDetailPage({
   const { account, contacts, projects, unbilled, unpaid } = data;
 
   return (
-    <div className="p-4 max-w-3xl space-y-6">
-      <div>
-        <Link href="/m/customers" className="text-sm text-stone-500 hover:underline">
+    <OpsPage
+      title={account.name}
+      purpose={
+        [account.phone, account.email].filter(Boolean).join(" · ") ||
+        "No phone or email"
+      }
+      actions={<AddContactDialog accountId={id} />}
+    >
+      <p>
+        <Link
+          href="/m/customers"
+          className="text-sm text-stone-500 hover:underline"
+        >
           ← Customers
         </Link>
-        <div className="mt-2 flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">{account.name}</h1>
-            <p className="text-sm text-stone-600">
-              {[account.phone, account.email].filter(Boolean).join(" · ") || "No phone or email"}
-            </p>
-            <div className="mt-1 flex gap-2">
-              <Badge variant="secondary">{account.billing_type || "per_job"}</Badge>
-              {account.is_direct ? <Badge variant="outline">Direct</Badge> : null}
-            </div>
-          </div>
-        </div>
-        {account.is_direct ? (
-          <p className="mt-2 text-sm text-stone-500">
-            Direct is the built-in walk-in account and can&apos;t be deleted.
-          </p>
-        ) : null}
+      </p>
+      <div className="flex gap-2">
+        <Badge variant="secondary">{account.billing_type || "per_job"}</Badge>
+        {account.is_direct ? <Badge variant="outline">Direct</Badge> : null}
       </div>
+      {account.is_direct ? (
+        <p className="text-sm text-stone-500">
+          Direct is the built-in walk-in account and can&apos;t be deleted.
+        </p>
+      ) : null}
 
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-medium uppercase text-stone-500">Contacts</h2>
-          <AddContactDialog accountId={id} />
-        </div>
+      <OpsSection title="Contacts">
         {contacts.length === 0 ? (
           <p className="text-sm text-stone-500">No contacts yet.</p>
         ) : (
           <ul className="space-y-2">
-            {contacts.map((c: { id: string; name: string; phone?: string; email?: string }) => (
-              <li key={c.id} className="flex justify-between rounded border px-3 py-2 text-sm">
-                <span className="font-medium">{c.name}</span>
-                <span className="text-stone-600">
-                  {c.phone ? (
-                    <a href={`tel:${c.phone}`} className="hover:underline">
-                      {c.phone}
-                    </a>
-                  ) : (
-                    c.email || "—"
-                  )}
-                </span>
-              </li>
-            ))}
+            {contacts.map(
+              (c: { id: string; name: string; phone?: string; email?: string }) => (
+                <li
+                  key={c.id}
+                  className="flex justify-between rounded border px-3 py-2 text-sm"
+                >
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-stone-600">
+                    {c.phone ? (
+                      <a href={`tel:${c.phone}`} className="hover:underline">
+                        {c.phone}
+                      </a>
+                    ) : (
+                      c.email || "—"
+                    )}
+                  </span>
+                </li>
+              ),
+            )}
           </ul>
         )}
-      </section>
+      </OpsSection>
 
-      <section>
-        <h2 className="text-sm font-medium uppercase text-stone-500 mb-2">Projects</h2>
+      <OpsSection title="Projects">
         {projects.length === 0 ? (
-          <p className="text-sm text-stone-500">No projects yet — use + to quick-create.</p>
+          <p className="text-sm text-stone-500">
+            No projects yet — use + to quick-create.
+          </p>
         ) : (
           <ul className="space-y-2">
             {projects.map((p: { id: string; title: string; status: string }) => (
@@ -116,18 +121,17 @@ export default async function CustomerDetailPage({
                   className="flex justify-between rounded border px-3 py-2 text-sm hover:bg-stone-50"
                 >
                   <span>{p.title}</span>
-                  <span className="text-stone-500">{p.status.replace(/_/g, " ")}</span>
+                  <span className="text-stone-500">
+                    {p.status.replace(/_/g, " ")}
+                  </span>
                 </Link>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </OpsSection>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium uppercase text-stone-500">
-          Completed & unbilled
-        </h2>
+      <OpsSection title="Completed & unbilled">
         <p className="text-sm text-stone-600">
           Unpaid balance: {formatCents(unpaid)}
         </p>
@@ -136,12 +140,25 @@ export default async function CustomerDetailPage({
         ) : (
           <>
             <ul className="space-y-1">
-              {unbilled.map((p: { id: string; title: string; quote_price_cents: number | null }) => (
-                <li key={p.id} className="flex justify-between text-sm border-b py-2">
-                  <span>{p.title}</span>
-                  <span className="tabular-nums">{formatCents(p.quote_price_cents || 0)}</span>
-                </li>
-              ))}
+              {unbilled.map(
+                (p: {
+                  id: string;
+                  title: string;
+                  quote_price_cents: number | null;
+                }) => (
+                  <li
+                    key={p.id}
+                    className="flex justify-between text-sm border-b py-2"
+                  >
+                    <Link href={`/m/projects/${p.id}`} className="underline">
+                      {p.title}
+                    </Link>
+                    <span className="tabular-nums">
+                      {formatCents(p.quote_price_cents || 0)}
+                    </span>
+                  </li>
+                ),
+              )}
             </ul>
             <CustomerInvoiceButton
               accountId={id}
@@ -149,7 +166,7 @@ export default async function CustomerDetailPage({
             />
           </>
         )}
-      </section>
-    </div>
+      </OpsSection>
+    </OpsPage>
   );
 }

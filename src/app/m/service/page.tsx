@@ -7,6 +7,7 @@ import { withUser } from "@/lib/db-core";
 import { Badge } from "@/components/ui/badge";
 import { NewTicketDialog } from "./new-ticket";
 import { taskColors } from "@/lib/colors";
+import { OpsPage } from "@/components/ops/ops-page";
 
 const COLS = [
   { title: "New", statuses: ["new"] },
@@ -20,22 +21,25 @@ export default async function ServiceBoardPage() {
 
   const tickets = await withUser(session, async (c) => {
     const { rows } = await c.query(
-      `SELECT id, status, contact_name, address, issue, urgency, classification,
-              no_match, project_id, created_at
-       FROM tickets ORDER BY
-         CASE urgency WHEN 'urgent' THEN 0 ELSE 1 END,
-         created_at DESC
+      `SELECT t.id, t.status, t.contact_name, t.address, t.issue, t.urgency, t.classification,
+              t.no_match, t.project_id, t.created_at, p.title AS project_title
+       FROM tickets t
+       LEFT JOIN projects p ON p.id = t.project_id
+       ORDER BY
+         CASE t.urgency WHEN 'urgent' THEN 0 ELSE 1 END,
+         t.created_at DESC
        LIMIT 100`,
     );
     return rows;
   });
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Service</h1>
-        <NewTicketDialog />
-      </div>
+    <OpsPage
+      title="Service"
+      purpose="Urgent tickets → schedule a visit → resolve."
+      wide
+      actions={<NewTicketDialog />}
+    >
       <div className="flex gap-3 overflow-x-auto pb-2">
         {COLS.map((col) => {
           const cards = tickets.filter((t: { status: string }) =>
@@ -59,6 +63,8 @@ export default async function ServiceBoardPage() {
                     urgency: string;
                     classification?: string;
                     no_match: boolean;
+                    project_id?: string;
+                    project_title?: string;
                   }) => (
                     <Link
                       key={t.id}
@@ -73,7 +79,14 @@ export default async function ServiceBoardPage() {
                       <div className="text-sm font-medium">
                         {t.contact_name || t.address || "Ticket"}
                       </div>
-                      <div className="text-xs text-stone-600 line-clamp-2">{t.issue}</div>
+                      <div className="text-xs text-stone-600 line-clamp-2">
+                        {t.issue}
+                      </div>
+                      {t.project_title ? (
+                        <div className="text-[10px] text-stone-500 mt-1 truncate">
+                          → {t.project_title}
+                        </div>
+                      ) : null}
                       <div className="mt-1 flex flex-wrap gap-1">
                         {t.classification ? (
                           <Badge variant="secondary" className="text-[10px]">
@@ -94,6 +107,6 @@ export default async function ServiceBoardPage() {
           );
         })}
       </div>
-    </div>
+    </OpsPage>
   );
 }

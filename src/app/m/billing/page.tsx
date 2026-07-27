@@ -1,10 +1,12 @@
 // Billing door #2 — pick customer, toggle unbilled jobs, create invoice.
 
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { formatCents } from "@/lib/money";
 import { BillingForm } from "./form";
+import { OpsPage, OpsSection } from "@/components/ops/ops-page";
 
 export default async function BillingPage() {
   const session = await getAppSession();
@@ -42,25 +44,26 @@ export default async function BillingPage() {
   });
 
   return (
-    <div className="p-4 max-w-3xl space-y-5">
-      <header>
-        <h1 className="text-xl font-semibold">Billing</h1>
-        <p className="text-sm text-stone-500">
-          On demand only — never automatic.{" "}
-          {data.qb?.connected_at
-            ? `QuickBooks ${data.qb.product} connected.`
-            : "QuickBooks not connected yet."}
-        </p>
-      </header>
-
-      <section>
-        <h2 className="text-sm font-medium uppercase text-stone-500 mb-2">Unpaid by customer</h2>
+    <OpsPage
+      title="Billing"
+      purpose={
+        data.qb?.connected_at
+          ? `On demand only. QuickBooks ${data.qb.product} connected.`
+          : "On demand only — QuickBooks not connected yet."
+      }
+    >
+      <OpsSection title="Unpaid by customer">
         <ul className="space-y-1">
           {data.accounts
             .filter((a: { unpaid: number }) => a.unpaid > 0)
             .map((a: { id: string; name: string; unpaid: number }) => (
-              <li key={a.id} className="flex justify-between text-sm border-b py-2">
-                <span>{a.name}</span>
+              <li
+                key={a.id}
+                className="flex justify-between text-sm border-b py-2"
+              >
+                <Link href={`/m/customers/${a.id}`} className="underline">
+                  {a.name}
+                </Link>
                 <span className="tabular-nums">{formatCents(a.unpaid)}</span>
               </li>
             ))}
@@ -68,25 +71,47 @@ export default async function BillingPage() {
             <li className="text-sm text-stone-500">No unpaid balances.</li>
           ) : null}
         </ul>
-      </section>
+      </OpsSection>
 
-      <BillingForm
-        unbilled={data.unbilled.map(
-          (p: {
-            id: string;
-            title: string;
-            account_id: string;
-            account_name: string;
-            quote_price_cents: number | null;
-          }) => ({
-            id: p.id,
-            title: p.title,
-            account_id: p.account_id,
-            account_name: p.account_name,
-            amount_cents: p.quote_price_cents || 0,
-          }),
-        )}
-      />
-    </div>
+      <OpsSection title="Unbilled installs">
+        <ul className="space-y-1 mb-3">
+          {data.unbilled.map(
+            (p: { id: string; title: string; quote_price_cents: number | null }) => (
+              <li
+                key={p.id}
+                className="flex justify-between text-sm border-b py-2"
+              >
+                <Link href={`/m/projects/${p.id}`} className="underline">
+                  {p.title}
+                </Link>
+                <span className="tabular-nums">
+                  {formatCents(p.quote_price_cents || 0)}
+                </span>
+              </li>
+            ),
+          )}
+          {data.unbilled.length === 0 ? (
+            <li className="text-sm text-stone-500">None waiting.</li>
+          ) : null}
+        </ul>
+        <BillingForm
+          unbilled={data.unbilled.map(
+            (p: {
+              id: string;
+              title: string;
+              account_id: string;
+              account_name: string;
+              quote_price_cents: number | null;
+            }) => ({
+              id: p.id,
+              title: p.title,
+              account_id: p.account_id,
+              account_name: p.account_name,
+              amount_cents: p.quote_price_cents || 0,
+            }),
+          )}
+        />
+      </OpsSection>
+    </OpsPage>
   );
 }

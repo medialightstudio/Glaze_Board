@@ -22,16 +22,20 @@ export default async function FieldHome() {
     const tz = await companyTodayExpr(c, session.companyId);
     const { rows } = await c.query(
       `SELECT v.id, v.type, v.starts_at::text, v.completed_at::text,
-              p.title, p.site_address, p.access_lockbox_code
+              coalesce(p.title, t.issue, 'Job') AS title,
+              coalesce(p.site_address, t.address) AS site_address,
+              p.access_lockbox_code,
+              v.project_id, v.ticket_id
        FROM visits v
        LEFT JOIN projects p ON p.id = v.project_id
-       LEFT JOIN teams t ON t.id = v.team_id
+       LEFT JOIN tickets t ON t.id = v.ticket_id
+       LEFT JOIN teams tm ON tm.id = v.team_id
        WHERE (v.starts_at AT TIME ZONE $1)::date
              = (now() AT TIME ZONE $1)::date
          AND (
            $2::boolean = true
            OR $3 = ANY (v.assignees)
-           OR (t.id IS NOT NULL AND $3 = ANY (t.member_ids))
+           OR (tm.id IS NOT NULL AND $3 = ANY (tm.member_ids))
          )
        ORDER BY v.starts_at ASC`,
       [tz, office, session.userId],
@@ -44,6 +48,8 @@ export default async function FieldHome() {
       title: string;
       site_address: string;
       access_lockbox_code: string | null;
+      project_id?: string;
+      ticket_id?: string;
     }[];
   });
 
@@ -81,14 +87,32 @@ export default async function FieldHome() {
                   </div>
                   <div className="font-medium mt-1">{v.title || "Job"}</div>
                   <div className="text-sm text-stone-600">{v.site_address}</div>
+                  {v.access_lockbox_code ? (
+                    <div className="text-xs text-stone-500 mt-1">
+                      Lockbox {v.access_lockbox_code}
+                    </div>
+                  ) : null}
                 </Link>
                 <div className="border-t px-3 py-2 flex gap-3 text-sm">
-                  <a href={maps} className="text-stone-900 underline" target="_blank" rel="noreferrer">
+                  <a
+                    href={maps}
+                    className="text-stone-900 underline"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Navigate
                   </a>
                   <Link href={`/f/jobs/${v.id}`} className="text-stone-900 underline">
                     Open
                   </Link>
+                  {office && v.project_id ? (
+                    <Link
+                      href={`/m/projects/${v.project_id}`}
+                      className="text-stone-500 underline"
+                    >
+                      Office
+                    </Link>
+                  ) : null}
                 </div>
               </li>
             );
