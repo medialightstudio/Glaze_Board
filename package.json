@@ -12,7 +12,12 @@
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
     "check:guard": "node scripts/check-guard",
-    "check:size": "node scripts/check-size"
+    "check:size": "node scripts/check-size",
+    "migrate": "node scripts/migrate",
+    "db:reset": "node scripts/reset",
+    "seed": "node scripts/seed",
+    "check:rls": "node scripts/check-rls",
+    "check:addr": "node scripts/check-addr"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

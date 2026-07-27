@@ -31,6 +31,18 @@ scripts/               check-guard, check-size (+ migrate/seed later)
 - **Protected paths:** never commit `.env*`, `userconfig.md`, or secrets; refuse the commit if `.gitignore` would miss them
 - **Migrations:** never rewrite an applied migration; code reverts with git, databases do not
 
+## Setup (owner)
+
+See [docs/owner-checklists.md](docs/owner-checklists.md) for Neon `glaze_app`, `.env.local` blanks, Cloudflare secrets, Access, R2, and Turnstile.
+
+```bash
+npm install
+# fill .env.local (never commit it)
+npm run migrate
+npm run dev
+npm run seed -- --company "Your Company" --email you@example.com --password '…' --name "You"
+```
+
 ## License
 
 Proprietary. Copyright © 2026 Glaze Board / Media Light Studio / David K. Nobody is granted permission to use this code. See [LICENSE](LICENSE).

@@ -32,6 +32,12 @@
 			"service": "glazeboard"
 		}
 	],
+	"r2_buckets": [
+		{
+			"binding": "DOCS",
+			"bucket_name": "docs"
+		}
+	],
 	"observability": {
 		"enabled": true
 	},
