@@ -13,11 +13,20 @@ Change the build settings you already have:
 | Repository | `medialightstudio/Glaze_Board` |
 | Production branch | `main` |
 | Root directory | `/` |
-| **Build command** | `npm ci && npx @opennextjs/cloudflare build` |
+| **Build command** | `npx @opennextjs/cloudflare build` |
 | **Deploy command** | `npx @opennextjs/cloudflare deploy` |
 | Build variables | none required (secrets are Worker secrets, not build vars) |
 
-Do **not** leave Build command as `None` or Deploy as bare `npx wrangler deploy` without an OpenNext build — that is why the first deploy was empty.
+Workers Builds already runs `npm clean-install` for you — do not rely on bare `npx wrangler deploy` alone.
+
+**If you see:** `Could not find compiled Open Next config, did you run the build command?`  
+→ Build command is empty/`None`, or Deploy is still `npx wrangler deploy` without a prior OpenNext build. Fix both rows above and retry.
+
+**Fallback (all-in-one Deploy command, Build can stay empty):**
+
+```text
+npx @opennextjs/cloudflare build && npx @opennextjs/cloudflare deploy
+```
 
 ### 2. R2 bucket
 
