@@ -51,6 +51,8 @@ npm run backup
 
 Owner click-through: [docs/clickthrough-checklist.md](docs/clickthrough-checklist.md).
 
+Cloudflare hosting: [docs/cloudflare-deploy.md](docs/cloudflare-deploy.md).
+
 ## License
 
 Proprietary. Copyright © 2026 Glaze Board / Media Light Studio / David K. Nobody is granted permission to use this code. See [LICENSE](LICENSE).

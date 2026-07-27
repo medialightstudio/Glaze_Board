@@ -2,6 +2,9 @@
   "name": "glazeboard",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -18,7 +21,10 @@
     "seed": "node scripts/seed",
     "check:rls": "node scripts/check-rls",
     "check:addr": "node scripts/check-addr",
-    "backup": "node scripts/backup"
+    "backup": "node scripts/backup",
+    "cf:secrets": "node scripts/cf-secrets",
+    "cf:r2": "wrangler r2 bucket create docs",
+    "deploy:build": "opennextjs-cloudflare build"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
