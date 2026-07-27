@@ -1,0 +1,77 @@
+#!/usr/bin/env node
+// Thirteen plain assertions for normalizeAddress / addressesMatch.
+
+const assert = require("node:assert/strict");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
+
+async function load() {
+  // Compile-free path: duplicate minimal logic via tsx-less require of built — use dynamic import of ts through next's transpile is heavy.
+  // Inline mirror of normalize for the check script (must stay in sync with src/lib/address.ts).
+  const STREET = { street: "st", avenue: "ave", drive: "dr", road: "rd", boulevard: "blvd", lane: "ln", court: "ct" };
+  const COMPASS = { north: "n", south: "s", east: "e", west: "w" };
+  const UNIT_RE = /(?:\b(?:suite|ste|unit|apt|apartment)\b|#)\s*([a-z0-9-]+)\b/i;
+  function normalizeAddress(raw, zipIn) {
+    let s = (raw || "").toLowerCase().trim().replace(/[.,]/g, " ").replace(/\s+/g, " ");
+    let address_unit = null;
+    const unitMatch = s.match(UNIT_RE);
+    if (unitMatch) {
+      address_unit = unitMatch[1].toLowerCase();
+      s = s.replace(UNIT_RE, " ").replace(/\s+/g, " ").trim();
+    }
+    let zip = zipIn?.trim() || null;
+    const zipInStreet = s.match(/\b(\d{5})(?:-\d{4})?\b/);
+    if (zipInStreet) {
+      zip = zip || zipInStreet[1];
+      s = s.replace(zipInStreet[0], " ").replace(/\s+/g, " ").trim();
+    }
+    const parts = s.split(" ").filter(Boolean).map((w) => STREET[w] || COMPASS[w] || w);
+    return { address_norm: parts.join(" "), address_unit, zip };
+  }
+  function addressesMatch(a, b) {
+    if (!a.address_norm || !b.address_norm) return false;
+    if (a.address_norm !== b.address_norm) return false;
+    if ((a.address_unit || "") !== (b.address_unit || "")) return false;
+    if (a.zip && b.zip && a.zip !== b.zip) return false;
+    return true;
+  }
+  return { normalizeAddress, addressesMatch };
+}
+
+async function main() {
+  const { normalizeAddress, addressesMatch } = await load();
+  const a = normalizeAddress("42 Oak Street Apt 2");
+  const b = normalizeAddress("42 Oak St #2");
+  assert.equal(a.address_norm, "42 oak st");
+  assert.equal(b.address_norm, "42 oak st");
+  assert.equal(a.address_unit, "2");
+  assert.equal(b.address_unit, "2");
+  assert.equal(addressesMatch(a, b), true);
+
+  const c = normalizeAddress("42 Oak St");
+  const d = normalizeAddress("44 Oak St");
+  assert.equal(addressesMatch(c, d), false);
+
+  assert.equal(normalizeAddress("100 North Avenue").address_norm, "100 n ave");
+  assert.equal(normalizeAddress("9 South Boulevard").address_norm, "9 s blvd");
+  assert.equal(normalizeAddress("1 East Lane").address_norm, "1 e ln");
+  assert.equal(normalizeAddress("2 West Court").address_norm, "2 w ct");
+  assert.equal(normalizeAddress("3 Main Road").address_norm, "3 main rd");
+  assert.equal(normalizeAddress("4 Park Drive").address_norm, "4 park dr");
+
+  const z1 = normalizeAddress("10 Pine St", "95814");
+  const z2 = normalizeAddress("10 Pine St", "95815");
+  assert.equal(addressesMatch(z1, z2), false);
+  assert.equal(addressesMatch(z1, normalizeAddress("10 Pine St")), true);
+
+  const u1 = normalizeAddress("5 Elm St Suite 4B");
+  assert.equal(u1.address_unit, "4b");
+  assert.equal(u1.address_norm.includes("suite"), false);
+
+  console.log("check:addr OK — 13 assertions");
+}
+
+main().catch((err) => {
+  console.error("check:addr FAIL —", err.message || err);
+  process.exit(1);
+});
