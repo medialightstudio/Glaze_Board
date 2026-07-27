@@ -1,0 +1,82 @@
+#!/usr/bin/env node
+// Fails if protected paths changed while MODEL is not sonnet (default: composer).
+
+const { execSync } = require("node:child_process");
+
+const model = (process.env.MODEL || "composer").toLowerCase();
+
+const protectedPatterns = [
+  /^migrations\//,
+  /(?:^|\/)middleware\.ts$/,
+  /^src\/lib\/auth\//,
+  /^src\/lib\/db-core(\.|$)/,
+  /^\.env/,
+  /^wrangler/,
+  /^scripts\/migrate/,
+  /^scripts\/check-rls/,
+  /^scripts\/seed/,
+];
+
+function changedFiles() {
+  const cmds = [
+    "git diff --name-only --diff-filter=ACMRTUXB",
+    "git diff --name-only --cached --diff-filter=ACMRTUXB",
+    "git ls-files --others --exclude-standard",
+  ];
+  const files = new Set();
+  for (const cmd of cmds) {
+    const out = execSync(cmd, { encoding: "utf8" }).trim();
+    if (!out) continue;
+    for (const line of out.split("\n")) {
+      if (line) files.add(line);
+    }
+  }
+  // Also compare against merge-base with main when available (CI / PR context).
+  try {
+    const base = execSync("git merge-base HEAD origin/main", {
+      encoding: "utf8",
+    }).trim();
+    if (base) {
+      const out = execSync(`git diff --name-only ${base}...HEAD`, {
+        encoding: "utf8",
+      }).trim();
+      if (out) {
+        for (const line of out.split("\n")) {
+          if (line) files.add(line);
+        }
+      }
+    }
+  } catch {
+    // origin/main may be missing locally; working tree checks above still apply.
+  }
+  return [...files];
+}
+
+function isProtected(file) {
+  if (protectedPatterns.some((re) => re.test(file))) return true;
+  // RLS policies live in migration SQL; also catch explicit policy file names.
+  if (/rls|row.level.security/i.test(file) && file.endsWith(".sql")) return true;
+  return false;
+}
+
+const files = changedFiles();
+const hits = files.filter(isProtected);
+
+if (hits.length === 0) {
+  console.log("check:guard OK — no protected files changed.");
+  process.exit(0);
+}
+
+if (model === "sonnet") {
+  console.log("check:guard OK — MODEL=sonnet; protected files allowed:");
+  for (const f of hits) console.log(`  ${f}`);
+  process.exit(0);
+}
+
+console.error(
+  "check:guard FAIL — protected files changed while MODEL is not sonnet.",
+);
+console.error(`MODEL=${model} (set MODEL=sonnet for foundation steps).`);
+console.error("Protected files:");
+for (const f of hits) console.error(`  ${f}`);
+process.exit(1);

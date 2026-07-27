@@ -1,0 +1,90 @@
+#!/usr/bin/env node
+// Prints compressed Worker size (KiB) from an OpenNext dry-run / wrangler dry build.
+
+const { execSync, spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
+
+function run(cmd, opts = {}) {
+  return spawnSync(cmd, {
+    shell: true,
+    encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
+    ...opts,
+  });
+}
+
+console.log("check:size — building Worker (dry-run)…");
+
+const build = run("npx opennextjs-cloudflare build", {
+  env: { ...process.env, CI: "1" },
+});
+if (build.status !== 0) {
+  console.error(build.stdout);
+  console.error(build.stderr);
+  console.error("check:size FAIL — OpenNext build failed.");
+  process.exit(1);
+}
+
+const dry = run("npx wrangler deploy --dry-run --outdir=.wrangler-size-tmp", {
+  env: { ...process.env, CI: "1" },
+});
+const combined = `${dry.stdout}\n${dry.stderr}`;
+if (dry.status !== 0) {
+  console.error(combined);
+  console.error("check:size FAIL — wrangler dry-run failed.");
+  process.exit(1);
+}
+
+// Prefer wrangler's "Total Upload: … / gzip: N KiB" line.
+const gzipMatch = combined.match(/gzip:\s*([\d.]+)\s*KiB/i);
+const uploadMatch = combined.match(
+  /Total Upload:\s*([\d.]+)\s*KiB\s*\/\s*gzip:\s*([\d.]+)\s*KiB/i,
+);
+
+let kib;
+if (uploadMatch) {
+  kib = Number(uploadMatch[2]);
+} else if (gzipMatch) {
+  kib = Number(gzipMatch[1]);
+}
+
+// Fallback: gzip the worker bundle if present.
+if (kib === undefined || Number.isNaN(kib)) {
+  const candidates = [
+    ".open-next/worker.js",
+    ".wrangler-size-tmp/worker.js",
+    ".wrangler/tmp/deploy-*.js",
+  ];
+  let file;
+  for (const c of candidates) {
+    if (c.includes("*")) continue;
+    if (fs.existsSync(c)) {
+      file = c;
+      break;
+    }
+  }
+  if (!file) {
+    console.error(combined);
+    console.error("check:size FAIL — could not find Worker size in output.");
+    process.exit(1);
+  }
+  const gz = execSync(`gzip -c "${file}" | wc -c`, { encoding: "utf8" }).trim();
+  kib = Number(gz) / 1024;
+}
+
+// Cleanup temp outdir
+try {
+  fs.rmSync(path.resolve(".wrangler-size-tmp"), { recursive: true, force: true });
+} catch {
+  // ignore
+}
+
+const rounded = Math.round(kib * 100) / 100;
+console.log(`${rounded}`);
+if (rounded > 2500) {
+  console.log(
+    "OBSERVED: compressed Worker size over 2.5 MB (free plan caps at 3 MB).",
+  );
+}
+process.exit(0);

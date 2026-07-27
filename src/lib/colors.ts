@@ -1,0 +1,10 @@
+// Task colors — one meaning each, used on cards, calendar lanes, and map pins. DEC-11
+
+export const taskColors = {
+  measure: "#2563EB",
+  install: "#16A34A",
+  service: "#EA580C",
+  urgentRing: "#DC2626",
+} as const;
+
+export type TaskColorKey = keyof typeof taskColors;

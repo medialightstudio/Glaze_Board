@@ -1,6 +1,6 @@
 # Glaze Board
 
-Management system for a small custom glass installation company (glazeboard.com). Specs live in `docs/`; the app arrives in build ledger step A2.
+Management system for a small custom glass installation company (glazeboard.com). Specs live in `docs/`; Next.js app on Cloudflare Workers (OpenNext).
 
 ## Folder map
 
@@ -11,25 +11,15 @@ LICENSE
 README.md
 BUILD-LOG.md
 .cursor/rules/00-standing-orders.mdc
-docs/
-  1-product.md
-  2-systems.md
-  3-decisions.md
-  4-build-ledger.md
-```
-
-App directories created in step A2:
-
-```
-src/app/m/…        management portal routes
-src/app/f/…        field portal (shell only for now)
-src/app/c/…        contractor portal (blocked page only)
-src/app/api/…      route handlers
-src/components/…   shared UI, one component per file
-src/lib/…          db-core.ts, db.ts, status-machine.ts, matching.ts,
-                   address.ts, colors.ts, storage.ts, money.ts, maps/
-migrations/        plain SQL, applied in order
-scripts/           migrate, seed, reset, check-*, backup
+docs/                  the specification (read-only)
+src/app/m/…            management portal routes
+src/app/f/…            field portal (shell only for now)
+src/app/c/…            contractor portal (blocked page only)
+src/app/api/…          route handlers
+src/components/…       shared UI, one component per file
+src/lib/…              colors.ts, money.ts, utils.ts (+ later modules)
+migrations/            plain SQL, applied in order
+scripts/               check-guard, check-size (+ migrate/seed later)
 ```
 
 ## Git conventions
