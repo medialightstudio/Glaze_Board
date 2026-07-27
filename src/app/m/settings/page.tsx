@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { CreateUserForm } from "./create-user";
+import { PushToggle } from "@/components/push-toggle";
 
 export default async function SettingsPage() {
   const session = await getAppSession();
@@ -18,11 +19,24 @@ export default async function SettingsPage() {
     return rows;
   });
 
+  const me = await withUser(session, async (c) => {
+    const { rows } = await c.query(
+      `SELECT push_enabled FROM "user" WHERE id = $1`,
+      [session.userId],
+    );
+    return rows[0] as { push_enabled: boolean } | undefined;
+  });
+
   const isAdmin = session.role === "admin";
 
   return (
     <div className="p-4 max-w-xl space-y-6">
       <h1 className="text-xl font-semibold">Settings</h1>
+
+      <section>
+        <h2 className="text-sm font-medium uppercase text-stone-500 mb-2">Notifications</h2>
+        <PushToggle initiallyEnabled={Boolean(me?.push_enabled)} />
+      </section>
 
       <section>
         <h2 className="text-sm font-medium uppercase text-stone-500 mb-2">Users</h2>

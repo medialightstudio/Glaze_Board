@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { createProject, getAccount } from "@/lib/db";
+import { geocode } from "@/lib/maps";
 
 export async function POST(req: Request) {
   const session = await getAppSession();
@@ -31,6 +32,24 @@ export async function POST(req: Request) {
         zip: body.zip,
       });
     });
+
+    // Geocode after save — never block create if Nominatim fails (new construction).
+    try {
+      const point = await geocode(site);
+      if (point) {
+        await withUser(session, async (c) => {
+          await c.query(
+            `UPDATE projects SET lat = $1, lng = $2, updated_at = now() WHERE id = $3`,
+            [point.lat, point.lng, project.id],
+          );
+        });
+        project.lat = point.lat;
+        project.lng = point.lng;
+      }
+    } catch {
+      /* leave lat/lng null — owner can drop a pin */
+    }
+
     return NextResponse.json(project, { status: 201 });
   } catch (e) {
     return NextResponse.json(

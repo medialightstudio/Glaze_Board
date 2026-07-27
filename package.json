@@ -17,7 +17,8 @@
     "db:reset": "node scripts/reset",
     "seed": "node scripts/seed",
     "check:rls": "node scripts/check-rls",
-    "check:addr": "node scripts/check-addr"
+    "check:addr": "node scripts/check-addr",
+    "backup": "node scripts/backup"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -1,10 +1,12 @@
-// Dispatch v1 — week list of visits (map arrives later).
+// Dispatch — week visit lanes + map pane (pins by task color, urgent red ring).
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser } from "@/lib/db-core";
 import { taskColors } from "@/lib/colors";
+import type { MapPin } from "@/lib/maps";
+import { MapView } from "@/components/map-view";
 import { BookVisitForm } from "./book-visit";
 
 export default async function DispatchPage() {
@@ -16,6 +18,7 @@ export default async function DispatchPage() {
       `SELECT v.id, v.type, v.starts_at::text, v.assignees, v.duration::text,
               coalesce(p.title, t.issue, 'Visit') AS title,
               coalesce(p.site_address, t.address) AS address,
+              p.lat, p.lng, t.urgency,
               v.project_id, v.ticket_id
        FROM visits v
        LEFT JOIN projects p ON p.id = v.project_id
@@ -44,12 +47,47 @@ export default async function DispatchPage() {
     return rows;
   });
 
+  const pins: MapPin[] = visits
+    .filter((v: { lat?: number; lng?: number }) => v.lat != null && v.lng != null)
+    .map(
+      (v: {
+        id: string;
+        type: string;
+        title: string;
+        lat: number;
+        lng: number;
+        urgency?: string;
+        project_id?: string;
+        ticket_id?: string;
+      }) => ({
+        id: v.id,
+        lat: Number(v.lat),
+        lng: Number(v.lng),
+        color:
+          v.type === "measure"
+            ? taskColors.measure
+            : v.type === "install"
+              ? taskColors.install
+              : taskColors.service,
+        urgent: v.urgency === "urgent",
+        label: v.title,
+        href: v.project_id
+          ? `/m/projects/${v.project_id}`
+          : v.ticket_id
+            ? `/m/service/${v.ticket_id}`
+            : "/m/dispatch",
+      }),
+    );
+
   return (
-    <div className="p-4 max-w-3xl space-y-4">
+    <div className="p-4 max-w-5xl space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Dispatch</h1>
         <BookVisitForm users={users} projects={projects} />
       </div>
+
+      <MapView pins={pins} />
+
       {visits.length === 0 ? (
         <p className="text-sm text-stone-500">No visits this week.</p>
       ) : (
@@ -97,7 +135,7 @@ export default async function DispatchPage() {
                     {v.address ? (
                       <a
                         className="text-xs text-stone-500 underline"
-                        href={`https://maps.google.com/?q=${encodeURIComponent(v.address)}`}
+                        href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(v.address)}`}
                         target="_blank"
                         rel="noreferrer"
                       >

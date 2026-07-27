@@ -43,6 +43,14 @@ npm run dev
 npm run seed -- --company "Your Company" --email you@example.com --password '…' --name "You"
 ```
 
+Weekly backup (database dump + R2 note → copy to network storage):
+
+```bash
+npm run backup
+```
+
+Owner click-through: [docs/clickthrough-checklist.md](docs/clickthrough-checklist.md).
+
 ## License
 
 Proprietary. Copyright © 2026 Glaze Board / Media Light Studio / David K. Nobody is granted permission to use this code. See [LICENSE](LICENSE).

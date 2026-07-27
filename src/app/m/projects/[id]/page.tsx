@@ -13,6 +13,7 @@ import {
   NextActionButton,
   UploadDoc,
 } from "./actions";
+import { DropPin } from "./drop-pin";
 
 export default async function ProjectPage({
   params,
@@ -84,6 +85,8 @@ export default async function ProjectPage({
       ) : (
         <p className="text-sm text-stone-500">No next action for this status.</p>
       )}
+
+      <DropPin projectId={id} lat={project.lat} lng={project.lng} />
 
       <section>
         <div className="flex items-center justify-between mb-2">

@@ -33,3 +33,16 @@ Decisions: none. Model: grok.
 Built: migrations 0012–0013, visits/dispatch, public /service/[slug], matching.ts, tickets. Followed: ledger F.
 Decisions: none. Model: grok.
 Checks: owner must complete Access exclude, Turnstile, rate-limit (docs/owner-checklists.md).
+
+## Entry 8 — G1 — Maps
+Built: maps adapter (osm + google stub), Nominatim geocode on project create (non-blocking), DropPin on project, Dispatch MapView. Followed: ledger G1; DEC-11 colors; DEC-16 stub.
+Decisions: none. Model: grok.
+
+## Entry 9 — G2 — PWA & push
+Built: manifest + icons, push-only sw.js, VAPID env, push_subscriptions migration 0014, Settings toggle, gate/urgent push hooks. Followed: ledger G2.
+Decisions: none. Model: grok. OBSERVED: verify web-push under `npm run preview` on Workers; fallback is built-in crypto if it fails.
+
+## Entry 10 — G3 — Hardening
+Built: check:rls/guard/addr/size green; backup script; clickthrough checklist; README backup note. Followed: ledger G3.
+Decisions: Cloudflare Access stay/lift left to owner. Model: grok.
+Checks: rls ✅ guard ✅ (MODEL=grok) addr ✅ size 2261.74 KiB.

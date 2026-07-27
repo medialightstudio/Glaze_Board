@@ -247,6 +247,17 @@ export async function maybeFireGate(
     );
   }
 
+  try {
+    const { sendPushToOffice } = await import("@/lib/push");
+    await sendPushToOffice(client, session.companyId, {
+      title: "Ready to schedule",
+      body: "Glass and hardware are satisfied — this job is ready to book.",
+      url: `/m/projects/${projectId}`,
+    });
+  } catch {
+    // OBSERVED: web-push may fail in Workers — do not block the gate.
+  }
+
   return { fired: true as const };
 }
 

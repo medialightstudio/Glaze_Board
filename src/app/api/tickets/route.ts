@@ -70,7 +70,20 @@ export async function POST(req: Request) {
           noMatch,
         ],
       );
-      return rows[0];
+      const ticket = rows[0];
+      if (urgency === "urgent") {
+        try {
+          const { sendPushToOffice } = await import("@/lib/push");
+          await sendPushToOffice(c, session.companyId, {
+            title: "Urgent ticket",
+            body: issue,
+            url: `/m/service/${ticket.id}`,
+          });
+        } catch {
+          /* push optional */
+        }
+      }
+      return ticket;
     });
     return NextResponse.json(ticket, { status: 201 });
   } catch (e) {

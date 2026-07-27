@@ -62,3 +62,17 @@ Also:
 - Add Turnstile site/secret keys (`TURNSTILE_SECRET_KEY` in Cloudflare secrets; site key to the form when you wire the widget)
 - Cloudflare Access: exclude `/service/*`
 - Rate-limiting rule on `/service/*`
+
+## G — Push (VAPID)
+
+Add these Cloudflare secrets (same names as `.env.local`):
+
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT` (e.g. `mailto:support@glazeboard.com`)
+
+Generate locally if needed:
+
+```bash
+node -e "console.log(require('web-push').generateVAPIDKeys())"
+```
