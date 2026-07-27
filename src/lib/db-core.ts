@@ -1,4 +1,5 @@
 // Single database door — Neon Pool, request-scoped company/role via set_config(..., true). DEC-21, DEC-23.
+// Cloudflare Workers: never reuse a Pool across requests (cross-request I/O → Error 1101).
 
 import { Pool, type PoolClient } from "@neondatabase/serverless";
 
@@ -10,33 +11,33 @@ export type AppSession = {
 
 export type DbClient = PoolClient;
 
-let appPool: Pool | null = null;
-let migratePool: Pool | null = null;
-
-function getAppPool(): Pool {
+function appUrl() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is blank.");
-  if (!appPool) appPool = new Pool({ connectionString: url });
-  return appPool;
+  return url;
 }
 
-function getOwnerPool(): Pool {
-  // Auth/migrations helpers that must run as owner (table owner / DDL path).
+function ownerUrl() {
   const url = process.env.MIGRATE_DATABASE_URL || process.env.DATABASE_URL;
   if (!url) throw new Error("MIGRATE_DATABASE_URL is blank.");
-  if (!migratePool) migratePool = new Pool({ connectionString: url });
-  return migratePool;
+  return url;
 }
 
+/** Fresh Pool per call — Workers bind WebSocket I/O to the creating request. */
 async function withClient<T>(
-  pool: Pool,
+  connectionString: string,
   fn: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  const client = await pool.connect();
+  const pool = new Pool({ connectionString, max: 1 });
   try {
-    return await fn(client);
+    const client = await pool.connect();
+    try {
+      return await fn(client);
+    } finally {
+      client.release();
+    }
   } finally {
-    client.release();
+    await pool.end().catch(() => {});
   }
 }
 
@@ -45,7 +46,7 @@ export async function withUser<T>(
   session: AppSession,
   fn: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  return withClient(getAppPool(), async (client) => {
+  return withClient(appUrl(), async (client) => {
     await client.query("BEGIN");
     try {
       await client.query("SELECT set_config('app.company_id', $1, true)", [
@@ -68,7 +69,7 @@ export async function withUser<T>(
 export async function readAuth<T>(
   fn: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  return withClient(getAppPool(), async (client) => {
+  return withClient(appUrl(), async (client) => {
     await client.query("BEGIN");
     try {
       const result = await fn(client);
@@ -86,7 +87,7 @@ export async function systemContext<T>(
   companyId: string,
   fn: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  return withClient(getAppPool(), async (client) => {
+  return withClient(appUrl(), async (client) => {
     await client.query("BEGIN");
     try {
       await client.query("SELECT set_config('app.company_id', $1, true)", [
@@ -109,5 +110,5 @@ export async function systemContext<T>(
 export async function withOwnerClient<T>(
   fn: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  return withClient(getOwnerPool(), fn);
+  return withClient(ownerUrl(), fn);
 }

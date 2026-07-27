@@ -1,6 +1,11 @@
-// Better Auth HTTP handler.
+// Better Auth HTTP handler — auth/Pool created per request via getAuth().
 
-import { auth } from "@/lib/auth/auth";
+import { getAuth } from "@/lib/auth/auth";
 import { toNextJsHandler } from "better-auth/next-js";
 
-export const { GET, POST } = toNextJsHandler(auth);
+function handlers() {
+  return toNextJsHandler(getAuth());
+}
+
+export const GET = (req: Request) => handlers().GET(req);
+export const POST = (req: Request) => handlers().POST(req);

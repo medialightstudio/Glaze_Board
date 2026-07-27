@@ -101,3 +101,5 @@ URLs: https://glazeboard.com · https://www.glazeboard.com · https://glazeboard
 
 **R2:** not enabled on the account yet. Document uploads stay unavailable until you open **Dashboard → R2**, accept/enable R2, create bucket `docs`, then restore the `r2_buckets` binding in `wrangler.jsonc` and redeploy.
 
+**Error 1101 / cross-request I/O:** Neon `Pool` must be created per request (see `src/lib/db-core.ts` + `getAuth()`). A module-scoped Pool reused across Workers requests throws and Cloudflare shows Error 1101.
+

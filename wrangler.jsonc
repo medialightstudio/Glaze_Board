@@ -2,6 +2,7 @@
  * Cloudflare Worker config for Glaze Board (OpenNext).
  * R2 DOCS binding omitted until R2 is enabled on the account (Dashboard → R2).
  * After enabling: create bucket `docs`, then restore the r2_buckets block from docs/cloudflare-deploy.md.
+ * Cron triggers omitted until a scheduled handler (or external cron) hits /api/cron.
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",

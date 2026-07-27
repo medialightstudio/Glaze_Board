@@ -46,3 +46,7 @@ Decisions: none. Model: grok. OBSERVED: verify web-push under `npm run preview` 
 Built: check:rls/guard/addr/size green; backup script; clickthrough checklist; README backup note. Followed: ledger G3.
 Decisions: Cloudflare Access stay/lift left to owner. Model: grok.
 Checks: rls ✅ guard ✅ (MODEL=grok) addr ✅ size 2261.74 KiB.
+
+## Entry 11 — Fix Cloudflare Error 1101 (cross-request Pool I/O)
+Built: per-request Neon Pool in db-core; getAuth()/createAuth() via React cache (no module-scope Pool). Followed: OpenNext troubleshooting; Workers I/O isolation.
+Decisions: production hotfix on last good Worker commit. Model: grok.

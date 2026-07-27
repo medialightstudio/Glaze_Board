@@ -3,7 +3,7 @@
 import { NextResponse } from "next/server";
 import { getAppSession } from "@/lib/auth/session";
 import { withUser, readAuth } from "@/lib/db-core";
-import { auth } from "@/lib/auth/auth";
+import { getAuth } from "@/lib/auth/auth";
 
 export async function GET() {
   const session = await getAppSession();
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    await auth.api.signUpEmail({
+    await getAuth().api.signUpEmail({
       body: { name, email, password },
     });
   } catch (e) {
