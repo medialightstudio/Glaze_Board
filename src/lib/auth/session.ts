@@ -1,11 +1,11 @@
 // Server session helpers — map Better Auth session into AppSession for db-core.
 
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth/auth";
+import { getAuth } from "@/lib/auth/auth";
 import type { AppSession } from "@/lib/db-core";
 
 export async function getAppSession(): Promise<AppSession | null> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user) return null;
   const user = session.user as {
     id: string;

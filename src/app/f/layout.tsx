@@ -2,11 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth/auth";
+import { getAuth } from "@/lib/auth/auth";
 import Link from "next/link";
 
 export default async function FLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/login");
   const role = (session.user as { role?: string }).role || "field";
   const office = role === "admin" || role === "manager";

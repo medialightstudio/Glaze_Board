@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth/auth";
+import { getAuth } from "@/lib/auth/auth";
 import { isOfficeRole } from "@/lib/auth/session";
 import { AppHeader } from "@/components/app-header";
 import { MMobileTabs, MSidebar } from "@/components/m-nav";
@@ -14,7 +14,7 @@ export default async function MLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/login");
 
   const user = session.user as {

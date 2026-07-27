@@ -86,3 +86,7 @@ Decisions: QB/Twilio secrets = DECISION NEEDED for live connect. Model: grok.
 ## Entry 20 — Phone J1–J12
 Built: structured voice gather; WhatsApp→interpreter when phone-bound; CRL ToS/enable Settings; Bridge worker Playwright flag; reports already present. Followed: docs/8.
 Decisions: D2/D4/Playwright env still owner gates for live L1/voice number. Model: grok.
+
+## Entry 21 — Fix Cloudflare Error 1101 (cross-request Pool I/O)
+Built: per-request Neon Pool in db-core; getAuth()/createAuth() via React cache (no module-scope Pool); wrangler R2+cron omitted until account-ready. Followed: OpenNext troubleshooting; Workers I/O isolation.
+Decisions: deploy hotfix from last good Worker commit for production; enterprise keeps same fix. Model: grok.

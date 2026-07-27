@@ -99,9 +99,11 @@ Or run migrate once against live with `MIGRATE_DATABASE_URL`, then seed while `B
 Deployed Worker: `glazeboard`  
 URLs: https://glazeboard.com · https://www.glazeboard.com · https://glazeboard.medialightstudia.workers.dev
 
-**R2:** `wrangler.jsonc` includes the `DOCS` → `docs` binding again. Before deploy: Dashboard → R2 → enable → create bucket `docs` (or `npm run cf:r2`).
+**R2:** binding omitted in `wrangler.jsonc` until the account enables R2. After enable: create bucket `docs` (`npm run cf:r2`) and restore the `r2_buckets` block.
 
-**Cron:** `wrangler.jsonc` declares `*/10 * * * *` and `0 14 * * *`. OpenNext does not auto-map those to Next routes — wire one of:
+**Cron:** not declared in wrangler yet. OpenNext does not auto-map crons to Next routes — wire one of:
 1. Cloudflare Worker scheduled event that `fetch`es `https://glazeboard.com/api/cron` (poll) and `.../api/cron?job=digest` with `Authorization: Bearer $CRON_SECRET`
 2. Or an external cron (same URLs). Also `?job=qb_payments` for QuickBooks balance sync.
+
+**Error 1101 / cross-request I/O:** Neon `Pool` must be created per request (see `src/lib/db-core.ts` + `getAuth()`). A module-scoped Pool reused across Workers requests throws and Cloudflare shows Error 1101.
 
