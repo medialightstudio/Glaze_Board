@@ -1,0 +1,43 @@
+/**
+ * Cloudflare Worker config for Glaze Board (OpenNext).
+ * R2 DOCS binding omitted until R2 is enabled on the account (Dashboard → R2).
+ * After enabling: create bucket `docs`, then restore the r2_buckets block from docs/cloudflare-deploy.md.
+ * Cron triggers omitted until a scheduled handler (or external cron) hits /api/cron.
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "glazeboard",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-07-27",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"workers_dev": true,
+	"preview_urls": true,
+	"routes": [
+		{ "pattern": "glazeboard.com", "custom_domain": true },
+		{ "pattern": "www.glazeboard.com", "custom_domain": true }
+	],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".open-next/assets"
+	},
+	"images": {
+		"binding": "IMAGES"
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "glazeboard"
+		}
+	],
+	"vars": {
+		"BETTER_AUTH_URL": "https://glazeboard.com",
+		"NEXTJS_ENV": "production"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true
+}

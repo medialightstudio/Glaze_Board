@@ -1,0 +1,63 @@
+#!/usr/bin/env node
+// Weekly backup: dated database dump (+ note for R2 sync). Owner copies to network storage.
+
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+
+function loadEnvLocal() {
+  const p = path.resolve(".env.local");
+  if (!fs.existsSync(p)) return;
+  for (const line of fs.readFileSync(p, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (!m) continue;
+    if (process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+  }
+}
+
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+loadEnvLocal();
+const url = process.env.MIGRATE_DATABASE_URL;
+if (!url) {
+  console.error("backup FAIL — MIGRATE_DATABASE_URL blank.");
+  process.exit(1);
+}
+
+const outDir = path.resolve("backups");
+fs.mkdirSync(outDir, { recursive: true });
+const file = path.join(outDir, `glazeboard-${stamp()}.sql`);
+
+const pgDump = spawnSync(
+  "pg_dump",
+  [url, "--no-owner", "--no-acl", "-f", file],
+  { encoding: "utf8" },
+);
+
+if (pgDump.status !== 0) {
+  console.error(pgDump.stderr || pgDump.stdout || "pg_dump failed");
+  console.error(
+    "backup FAIL — install Postgres client tools (pg_dump) or run from a machine that has them.",
+  );
+  process.exit(1);
+}
+
+const note = path.join(outDir, `glazeboard-${stamp()}-R2.txt`);
+fs.writeFileSync(
+  note,
+  [
+    "R2 files sync (manual / later automate):",
+    "  npx wrangler r2 object get docs/<key>  OR  use Cloudflare dashboard bulk download",
+    "Bucket binding: DOCS → bucket name docs",
+    "Copy this dump + R2 export to network storage weekly.",
+    "",
+  ].join("\n"),
+);
+
+console.log("backup OK");
+console.log(file);
+console.log(note);

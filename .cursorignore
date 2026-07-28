@@ -1,0 +1,5 @@
+# Keep private notes and filled secrets out of agent context by default.
+# .env.local is temporarily visible so the owner/agent can finish workbench setup.
+userconfig.md
+docs/archive/
+.env.local.filled

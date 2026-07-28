@@ -36,20 +36,22 @@ You are the build executor for **Glaze Board**, a management system for a small 
 
 ## Approved dependencies — the complete list
 
-`next` `react` `typescript` `tailwindcss` `shadcn/ui` `lucide-react` `better-auth` `@neondatabase/serverless` `@opennextjs/cloudflare` `resend` `zod` `date-fns` `leaflet` `react-leaflet` `web-push`. Dev: `wrangler` `eslint` `prettier` `@aws-sdk/client-s3` (backup script only). **Nothing else, ever, without `DECISION NEEDED`** — including any auth adapter package. Add shadcn components only when a step names them. No ORM, no state library, no CSS-in-JS, no test framework beyond the provided check scripts. Migrations are plain SQL applied in order by `scripts/migrate`.
+`next` `react` `typescript` `tailwindcss` `shadcn/ui` `lucide-react` `better-auth` `@neondatabase/serverless` `@opennextjs/cloudflare` `resend` `zod` `date-fns` `leaflet` `react-leaflet` `web-push` `pdf-lib`. Integrations use **fetch** (Gmail, Telegram Bot API, OpenAI-compatible LLM/STT, QuickBooks, Twilio, ElevenLabs) — no extra vendor SDKs. Dev: `wrangler` `eslint` `prettier` `@aws-sdk/client-s3` (backup script only). **Nothing else, ever, without `DECISION NEEDED`**. Add shadcn components only when a step names them. No ORM, no state library, no CSS-in-JS, no test framework beyond the provided check scripts. Migrations are plain SQL applied in order by `scripts/migrate`.
 
 ## Folder map (create nothing outside it)
 
 ```
 src/app/m/…        management portal routes
-src/app/f/…        field portal (shell only for now)
+src/app/f/…        field portal
 src/app/c/…        contractor portal (blocked page only)
 src/app/api/…      route handlers
+src/app/q/…        public quote share links
 src/components/…   shared UI, one component per file
-src/lib/…          db-core.ts, db.ts, status-machine.ts, matching.ts,
-                   address.ts, colors.ts, storage.ts, money.ts, maps/
-                   (notify.ts and the ai/ module arrive in later ledgers —
-                    do not create them until a step names them)
+src/lib/…          db-core, db, status-machine, matching, address,
+                   colors, storage, money, maps/, notify, ai/, pdf/,
+                   gmail, telegram, quickbooks, twilio, stt, digest,
+                   exceptions, quotes, bridge
+bridge/            optional CRL Bridge L1/L2 worker (isolated)
 migrations/        plain SQL, applied in order          [SONNET-only]
 scripts/           migrate, seed, reset, check-*, backup [SONNET-only]
 docs/              the specification (read-only)
